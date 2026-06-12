@@ -1,0 +1,18 @@
+station,train,val,test
+BARC,588,89,351
+Barishal,520,89,355
+CDA,616,89,323
+Cumilla,614,89,363
+Darussalam,623,89,362
+DoE,263,87,360
+Gazipur,621,89,343
+Khulna,615,89,358
+Mymensingh,414,89,358
+Narayanganj,534,89,332
+Narsingdi,625,89,347
+Rajshahi,628,89,364
+Rangpur,607,89,361
+Savar,611,89,363
+Sylhet,548,89,334
+TV Center,573,87,304
+TOTAL,9000,1420,5578

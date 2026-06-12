@@ -1,0 +1,9 @@
+,Parameters,Train time (min),Impute time (min),Latency (ms/window),Epochs
+GRU,205202.0,6.2,0.0,0.93,11.0
+LSTM,271250.0,3.8,0.0,0.48,14.0
+Persistence,0,0.0,0.0,0.02,-
+Proposed (MAT),406418.0,30.2,0.0,1.8,11.0
+SARIMA,0,3.1,0.0,32.83,-
+Seasonal-naive,0,0.0,0.0,0.02,-
+Two-stage (KNN),404626.0,24.4,2.3,1.5,11.0
+Two-stage (MICE),404626.0,27.9,0.1,1.59,11.0

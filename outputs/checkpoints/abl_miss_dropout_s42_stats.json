@@ -1,0 +1,67 @@
+{
+  "name": "abl_miss_dropout_s42",
+  "seed": 42,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Cross-Location Knowledge\\air-transformer\\outputs\\checkpoints\\abl_miss_dropout_s42_seed42.pt",
+  "best_val_loss": 0.6586440453952637,
+  "best_epoch": 3,
+  "epochs_run": 11,
+  "train_time_s": 1449.4,
+  "n_parameters": 406418,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.615639271910336,
+      "val": 0.7393128815390858
+    },
+    {
+      "epoch": 1,
+      "train": 0.4518627522873301,
+      "val": 0.7264617964432231
+    },
+    {
+      "epoch": 2,
+      "train": 0.42225239354684907,
+      "val": 0.70235839547334
+    },
+    {
+      "epoch": 3,
+      "train": 0.40510160806713025,
+      "val": 0.6586440453952637
+    },
+    {
+      "epoch": 4,
+      "train": 0.3968775654189347,
+      "val": 0.6861910805805026
+    },
+    {
+      "epoch": 5,
+      "train": 0.3856972909492728,
+      "val": 0.6843014050247878
+    },
+    {
+      "epoch": 6,
+      "train": 0.37803375180837023,
+      "val": 0.6716355017692078
+    },
+    {
+      "epoch": 7,
+      "train": 0.3661118940954136,
+      "val": 0.6756694296299118
+    },
+    {
+      "epoch": 8,
+      "train": 0.3582300194342965,
+      "val": 0.6984277430636806
+    },
+    {
+      "epoch": 9,
+      "train": 0.3540296491124203,
+      "val": 0.689258517608152
+    },
+    {
+      "epoch": 10,
+      "train": 0.34770983202710654,
+      "val": 0.661576722806424
+    }
+  ]
+}

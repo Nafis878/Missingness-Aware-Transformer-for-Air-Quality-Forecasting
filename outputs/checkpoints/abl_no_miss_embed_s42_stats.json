@@ -1,0 +1,67 @@
+{
+  "name": "abl_no_miss_embed_s42",
+  "seed": 42,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Cross-Location Knowledge\\air-transformer\\outputs\\checkpoints\\abl_no_miss_embed_s42_seed42.pt",
+  "best_val_loss": 0.6703565496053417,
+  "best_epoch": 3,
+  "epochs_run": 11,
+  "train_time_s": 1477.1,
+  "n_parameters": 404626,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.5655476601125383,
+      "val": 0.7588035488550599
+    },
+    {
+      "epoch": 1,
+      "train": 0.4335223688800444,
+      "val": 0.7200651499796944
+    },
+    {
+      "epoch": 2,
+      "train": 0.4102996955289994,
+      "val": 0.7152647603100859
+    },
+    {
+      "epoch": 3,
+      "train": 0.393152679978043,
+      "val": 0.6703565496053417
+    },
+    {
+      "epoch": 4,
+      "train": 0.3843735119645102,
+      "val": 0.6984845155954289
+    },
+    {
+      "epoch": 5,
+      "train": 0.37095099008829874,
+      "val": 0.7081325715395965
+    },
+    {
+      "epoch": 6,
+      "train": 0.3608640567879573,
+      "val": 0.7535540625183761
+    },
+    {
+      "epoch": 7,
+      "train": 0.3482179005040591,
+      "val": 0.7388333942565417
+    },
+    {
+      "epoch": 8,
+      "train": 0.3390783043876859,
+      "val": 0.716280385342034
+    },
+    {
+      "epoch": 9,
+      "train": 0.327896670890415,
+      "val": 0.7477350180103349
+    },
+    {
+      "epoch": 10,
+      "train": 0.31641965751210477,
+      "val": 0.7288252661426414
+    }
+  ]
+}

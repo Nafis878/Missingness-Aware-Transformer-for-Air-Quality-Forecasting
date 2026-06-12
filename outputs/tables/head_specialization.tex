@@ -1,0 +1,38 @@
+\begin{table}
+\caption{Per-head attention specialization: peak lag of the forecast-token attention profile and its entropy.}
+\label{tab:heads}
+\begin{tabular}{llrr}
+\toprule
+ &  & peak\_lag\_h & entropy\_nats \\
+layer & head &  &  \\
+\midrule
+\multirow[t]{8}{*}{0} & 0 & 23 & 4.800 \\
+ & 1 & 17 & 4.494 \\
+ & 2 & 12 & 3.633 \\
+ & 3 & 17 & 4.469 \\
+ & 4 & 1 & 4.438 \\
+ & 5 & 3 & 4.504 \\
+ & 6 & 4 & 4.522 \\
+ & 7 & 17 & 4.259 \\
+\cline{1-4}
+\multirow[t]{8}{*}{1} & 0 & 7 & 4.712 \\
+ & 1 & 16 & 4.621 \\
+ & 2 & 2 & 3.952 \\
+ & 3 & 17 & 3.832 \\
+ & 4 & 19 & 4.706 \\
+ & 5 & 2 & 4.107 \\
+ & 6 & 0 & 4.395 \\
+ & 7 & 3 & 4.075 \\
+\cline{1-4}
+\multirow[t]{8}{*}{2} & 0 & 4 & 5.028 \\
+ & 1 & 1 & 4.921 \\
+ & 2 & 0 & 4.973 \\
+ & 3 & 17 & 3.777 \\
+ & 4 & 17 & 4.993 \\
+ & 5 & 1 & 4.869 \\
+ & 6 & 0 & 4.932 \\
+ & 7 & 1 & 4.863 \\
+\cline{1-4}
+\bottomrule
+\end{tabular}
+\end{table}

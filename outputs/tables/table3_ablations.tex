@@ -1,0 +1,19 @@
+\begin{table}
+\caption{Ablation study: PM2.5 test RMSE (\si{\micro\gram\per\cubic\metre}), mean $\pm$ std over 3 seeds.}
+\label{tab:ablations}
+\begin{tabular}{lllll}
+\toprule
+ & h6 & h24 & h72 & seeds \\
+\midrule
+full & 67.03 ± 0.28 & 76.46 ± 0.51 & 81.54 ± 1.29 & 3 \\
+no\_miss\_embed & 67.52 ± 0.18 & 76.35 ± 0.29 & 81.93 ± 1.89 & 3 \\
+variant\_B & 67.04 ± 0.29 & 76.00 ± 0.51 & 80.26 ± 1.36 & 3 \\
+no\_met & 67.43 ± 0.05 & 76.70 ± 1.18 & 81.46 ± 0.72 & 3 \\
+no\_time & 67.88 ± 0.56 & 78.13 ± 0.96 & 84.69 ± 1.06 & 3 \\
+seq72 & 68.10 ± 0.52 & 77.21 ± 1.10 & 80.59 ± 0.71 & 3 \\
+seq336 & 68.62 ± 0.00 & 77.99 ± 0.00 & 80.98 ± 0.00 & 1 \\
+single\_h24 & — & 77.05 ± 1.49 & — & 3 \\
+miss\_dropout & 67.48 ± 0.88 & 79.69 ± 1.77 & 81.54 ± 0.91 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}

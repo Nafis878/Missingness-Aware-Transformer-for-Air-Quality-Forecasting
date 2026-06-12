@@ -1,0 +1,21 @@
+{
+  "lag_profile_peaks_h": [
+    1,
+    2,
+    0,
+    3,
+    17
+  ],
+  "pm25_sparse_attention_mass": {
+    "n_pm25_sparse_windows": 76,
+    "mean_attention_mass_on_pm25_observed": 0.1394796591423648,
+    "mean_attention_mass_on_met_only": 0.7061351753869339
+  },
+  "top_permutation_features": {
+    "PM2.5": 0.2347,
+    "PM10": 0.0137,
+    "RH": 0.0106,
+    "BP": 0.0081,
+    "Temp": 0.005
+  }
+}

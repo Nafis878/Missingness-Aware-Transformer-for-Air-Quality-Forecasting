@@ -1,0 +1,48 @@
+{
+  "overall_missing_pct": {
+    "SO2": 42.3,
+    "NO": 32.8,
+    "NO2": 37.9,
+    "NOX": 29.1,
+    "CO": 39.4,
+    "O3": 40.3,
+    "PM10": 32.8,
+    "PM2.5": 23.7,
+    "WS": 41.8,
+    "WD": 38.6,
+    "Temp": 37.0,
+    "RH": 32.4,
+    "BP": 48.3,
+    "SR": 44.7,
+    "Rain": 85.2,
+    "VWS": 83.5
+  },
+  "pm25_station_min_max": [
+    10.5,
+    45.3
+  ],
+  "pm25_by_season": {
+    "Winter": 19.0,
+    "Pre-monsoon": 23.0,
+    "Monsoon": 27.9,
+    "Post-monsoon": 23.7
+  },
+  "gap_structure": {
+    "pm25_share_gt_7d": 0.38974374693477193,
+    "pm25_share_gt_30d": 0.19431502370443027,
+    "pm25_median_gap_h": 2.0
+  },
+  "mean_pollutant_co_missingness_corr": 0.3818748797759996,
+  "mar_logistic": {
+    "n": 121806,
+    "base_rate": 0.10069290511140666,
+    "auc": 0.6063645849044622,
+    "top_coefficients": {
+      "BP": 0.387,
+      "month_cos": -0.288,
+      "month_sin": -0.226,
+      "RH": 0.188,
+      "Temp": 0.187
+    }
+  }
+}

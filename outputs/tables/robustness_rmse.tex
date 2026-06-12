@@ -1,0 +1,43 @@
+\begin{table}
+\caption{PM2.5 RMSE (\si{\micro\gram\per\cubic\metre}) under additional synthetic input missingness: cell-wise MCAR vs station-outage blocks.}
+\label{tab:robustness}
+\begin{tabular}{lllrrrr}
+\toprule
+ &  & level & 0 & 10 & 30 & 50 \\
+mode & model & horizon &  &  &  &  \\
+\midrule
+\multirow[t]{12}{*}{miss} & \multirow[t]{3}{*}{Proposed (MAT)} & 6 & 66.78 & 67.68 & 69.96 & 72.68 \\
+ &  & 24 & 77.11 & 77.44 & 78.33 & 78.47 \\
+ &  & 72 & 80.74 & 80.72 & 81.17 & 81.56 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Proposed + miss-dropout} & 6 & 66.24 & 66.35 & 67.20 & 68.30 \\
+ &  & 24 & 77.30 & 77.27 & 77.51 & 76.73 \\
+ &  & 72 & 80.47 & 80.40 & 80.48 & 80.63 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (KNN)} & 6 & 67.01 & 67.41 & 68.95 & 70.15 \\
+ &  & 24 & 75.57 & 75.74 & 76.09 & 75.89 \\
+ &  & 72 & 80.17 & 80.13 & 79.55 & 79.25 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (MICE)} & 6 & 67.34 & 67.82 & 68.67 & 69.92 \\
+ &  & 24 & 76.03 & 76.08 & 75.91 & 75.47 \\
+ &  & 72 & 79.74 & 79.59 & 79.06 & 78.84 \\
+\cline{1-7} \cline{2-7}
+\multirow[t]{12}{*}{out} & \multirow[t]{3}{*}{Proposed (MAT)} & 6 & 66.78 & 67.79 & 68.14 & 69.84 \\
+ &  & 24 & 77.11 & 77.39 & 76.62 & 77.41 \\
+ &  & 72 & 80.74 & 80.55 & 81.10 & 80.60 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Proposed + miss-dropout} & 6 & 66.24 & 67.04 & 67.56 & 68.28 \\
+ &  & 24 & 77.30 & 77.41 & 77.03 & 77.38 \\
+ &  & 72 & 80.47 & 80.16 & 80.62 & 80.18 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (KNN)} & 6 & 67.01 & 68.29 & 68.75 & 70.48 \\
+ &  & 24 & 75.57 & 76.00 & 75.64 & 77.19 \\
+ &  & 72 & 80.17 & 79.83 & 79.83 & 79.97 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (MICE)} & 6 & 67.34 & 68.38 & 68.48 & 70.39 \\
+ &  & 24 & 76.03 & 76.49 & 75.82 & 77.62 \\
+ &  & 72 & 79.74 & 79.41 & 79.50 & 79.86 \\
+\cline{1-7} \cline{2-7}
+\bottomrule
+\end{tabular}
+\end{table}

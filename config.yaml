@@ -1,0 +1,136 @@
+# =============================================================================
+# Single source of truth for the entire pipeline.
+# Every script takes --config and reads ONLY from here (no hard-coded params).
+# =============================================================================
+
+seed: 42
+num_threads: 8          # torch.set_num_threads / intra-op parallelism (CPU-only)
+
+paths:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  outputs_dir: outputs
+  figures_dir: outputs/figures
+  tables_dir: outputs/tables
+  checkpoints_dir: outputs/checkpoints
+  logs_dir: outputs/logs
+  predictions_dir: outputs/predictions
+
+data:
+  raw_files:
+    2022: "2022 Air.xlsx"
+    2023: "2023 Air.xlsx"
+    2024: "2024 Air.xlsx"
+  datetime_col: "Date & Time"
+  station_col: "Location"
+  # Variants observed across the three files -> canonical names.
+  station_rename:
+    "TV center": "TV Center"
+    "TV Sation": "TV Center"
+    "Narayangonj": "Narayanganj"
+    "Mymensing": "Mymensingh"
+  # Measurement columns, aligned strictly BY NAME (2024 has PM2.5/PM10 swapped
+  # in positional order; 2023 has an extra near-empty RS column).
+  # NB: "NO" must stay quoted -- bare NO is YAML 1.1 boolean false.
+  measurement_cols:
+    [SO2, "NO", NO2, NOX, CO, O3, PM10, PM2.5, WS, WD, Temp, RH, BP, SR, Rain, VWS]
+  # Columns dropped after logging their non-null counts.
+  drop_cols: [RS]
+  # Regex used to detect embedded unit/header rows (each per-station block in
+  # each xlsx starts with its own unit row).
+  unit_row_regex: 'ppb|ppm|ug/m3|W/m2|HPa|degre|m\s?m|m/s'
+  # Features excluded from modeling due to >75% missingness (documented in the
+  # cleaning report; raw values are still kept in the processed parquet).
+  exclude_features: [Rain, VWS]
+
+clean:
+  # Plausibility bounds (flag-and-NaN, never drop rows). Units as in raw data.
+  # Sources: Bangladesh climate normals; instrument ranges; WHO/EPA QA norms.
+  bounds:
+    SO2:   [0, 1000]     # ppb
+    "NO":  [0, 1000]     # ppb
+    NO2:   [0, 1000]     # ppb
+    NOX:   [0, 2000]     # ppb
+    CO:    [0, 50]       # ppm
+    O3:    [0, 500]      # ppb
+    PM10:  [0, 2000]     # ug/m3
+    PM2.5: [0, 1000]     # ug/m3
+    WS:    [0, 60]       # m/s
+    WD:    [0, 360]      # degrees
+    Temp:  [-10, 55]     # degC (Bangladesh record range with margin)
+    RH:    [0, 100]      # %
+    BP:    [870, 1085]   # hPa (world record range)
+    SR:    [0, 1500]     # W/m2
+    Rain:  [0, 500]      # mm
+    VWS:   [-20, 20]     # m/s
+  # A run of >= stuck_run_length identical consecutive NON-ZERO values for one
+  # (station, variable) is flagged as sensor-stuck and set to NaN.
+  # Zero runs are exempt (legitimately constant: Rain=0, SR=0 at night).
+  stuck_run_length: 24
+  # Instrument error/saturation codes (flag-and-NaN on exact match).
+  # 985.0 appears 1,328x verbatim in 2024 PM2.5 (294x PM10) incl. monsoon
+  # months where such concentrations are physically impossible; 999.99 is a
+  # classic 9999-style error code (11x). No other variable shows sentinel
+  # behavior (their exact repeats are detection-limit quantization).
+  sentinel_values:
+    PM2.5: [985.0, 999.99]
+    PM10: [985.0, 999.99]
+
+splits:                      # chronological, no leakage (see README)
+  train_end: "2023-09-30 23:00:00"     # 2022-01-01 .. 2023-09-30
+  val_end: "2023-12-31 23:00:00"       # 2023-10-01 .. 2023-12-31
+  # test = everything after val_end (all of 2024)
+
+dataset:
+  input_length: 168          # hours (one week)
+  horizons: [6, 24, 72]      # forecast horizons in hours
+  stride_train: 24           # window stride for training samples
+  stride_eval: 24            # window stride for val/test samples
+  target_pollutants: ["PM2.5", "PM10", "NO2", "O3", "CO", "SO2"]
+  primary_target: "PM2.5"
+  # Synthetic extra-missingness levels for the robustness ablation (MCAR drop
+  # applied to OBSERVED input values of the test set).
+  synthetic_missingness: [0.10, 0.30, 0.50]
+
+model:                       # proposed Missingness-Aware Transformer
+  d_model: 128
+  n_layers: 3
+  n_heads: 8
+  d_ff: 256
+  dropout: 0.1
+  norm_first: true           # pre-norm
+  pooling: "last"            # "last" | "attention"
+  attention_variant: "A"     # "A" = missingness embeddings only
+                             # "B" = + mask attention to steps with missing target
+  positional_encoding: "sinusoidal"   # "sinusoidal" | "learned"
+
+train:
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  scheduler: cosine
+  max_epochs: 50
+  early_stopping_patience: 7
+  grad_clip: 1.0
+  horizon_loss_weights: [1.0, 1.0, 1.0]
+  num_workers: 0             # Windows + CPU: keep dataloading in-process
+
+baselines:
+  rnn:                       # LSTM and GRU
+    hidden_size: 128
+    num_layers: 2
+    dropout: 0.1
+  sarima:                    # univariate PM2.5, per station, kept cheap
+    order: [1, 0, 1]
+    seasonal_order: [1, 0, 1, 24]
+    context_hours: 720       # rolling 30-day context per forecast anchor
+    maxiter: 50
+  impute:                    # two-stage pipeline imputers (fit on train ONLY)
+    knn_neighbors: 5
+    knn_fit_subsample: 5000      # KNN transform is O(n_fit x n_query); documented
+    mice_max_iter: 10
+    mice_fit_subsample: 50000
+
+ablation:
+  seeds: [42, 43, 44]
+  sequence_lengths: [72, 168, 336]
