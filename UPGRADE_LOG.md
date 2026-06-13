@@ -33,6 +33,28 @@ Conventions
 | 2026-06-13 | Manuscript `paper/main.tex` (elsarticle) + `references.bib` (23 refs) + `paper/README.md` | full draft, structurally linted (balanced envs/braces, all citations defined); built around the two-factor crossover. No local TeX toolchain — user builds on Overleaf. |
 | 2026-06-13 | Beijing interpretability (`scripts/06 --config config_beijing.yaml`) | attention + importance figures (PM2.5 dominant, PRES second). |
 
+## 8→9 upgrade (third dataset + measured imputability axis)
+
+Goal: turn the two-factor crossover (two opposite data points: Dhaka crosses
+over, Beijing does not) into a **predictive curve** by adding a third network of
+intermediate completeness (Delhi, CPCB/Mendeley `bzhzr9b64v`) and a **measured
+imputability axis** so the decision rule is quantitative, not post-hoc.
+
+| date | item | result / finding |
+|---|---|---|
+| 2026-06-13 | Imputability metric (`src/evaluate.py: imputability_score`, `_impute_skill`) | New, measured x-axis: hide a seeded 20% of *observed* test cells, reconstruct with the trained SAITS imputer vs forward-fill, report `imputability = 1 − RMSE_SAITS/RMSE_ffill` (standardized units). **Validated on the two existing networks and it orders them correctly:** Beijing **+0.20** (deep imputer beats ffill → reconstructable), Dhaka **−0.39** (deep imputer *worse* than ffill → hard to impute). |
+| 2026-06-13 | Imputability-crossover figure (`imputability_crossover_figure`, `decision_by_imputability.*`, `imputability_crossover.*`) | **The end-to-end advantage declines monotonically with imputability** (real 2-point result, h6/+50% outage): Dhaka (imputability −0.39) advantage **+1.69 µg/m³ → end-to-end wins**; Beijing (imputability +0.20) advantage **−4.29 → impute-then-forecast wins**. Delhi will supply the middle point to complete the curve. |
+| 2026-06-13 | n-way refactor (`cross_dataset_table`, `combined_crossover` now take `list[dict]`; `07 --tertiary-config`) | cross-dataset summary, combined crossover, and the imputability figure now span ≥3 datasets; single/two-dataset behaviour unchanged. |
+| 2026-06-13 | Delhi integration (`src/data/load_delhi.py`, `config_delhi.yaml`, `scripts/01c_prepare_delhi.py`, `scripts/colab_run_delhi.py`, `COLAB.md`) | tolerant, config-driven loader (header canonicalization + alias map + numeric wd→sin/cos; station from column or filename); CC BY 4.0; trained on Colab GPU like Beijing (artifacts pending). Config column set/bounds are CPCB defaults flagged for verification against the first cleaning report. |
+| 2026-06-13 | `example_forecast_figure` made dataset-agnostic | skips unknown configured stations and falls back to the first stations over a test-period window (was hard-coded to Dhaka station names; needed for a new dataset whose station names are unknown at config time). |
+| 2026-06-13 | Tests | +18 (9 Delhi loader, 6 imputability incl. torch-free skill core, 3 n-way crossover/imputability plumbing). **104/104 pass.** |
+
+Honest status: the code, metric and 2-point curve are verified on real data and
+already strengthen the result; the **9** depends on Delhi landing between the two
+anchors on a monotone imputability curve. If Delhi's imputability does not
+interpolate, that is reported (imputability would then be necessary but not
+sufficient) — a stronger three-point result either way.
+
 ## Run log
 
 | date | phase | command | wall-clock | artifacts | notes / contradictions |

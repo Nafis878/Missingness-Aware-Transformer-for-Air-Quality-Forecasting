@@ -1,9 +1,16 @@
-# Running the Beijing experiments on Google Colab (T4)
+# Running the secondary datasets (Beijing, Delhi) on Google Colab (GPU)
 
-The Beijing Multi-Site grid (11 models, 3 seeds for learned models, two
-robustness suites) is ~19–20 h on a desktop CPU but ~2–4 h on a Colab T4.
-Everything is file-existence resumable, so disconnects are harmless: just
-re-run the cell.
+The external-validity datasets are trained on Colab GPU and the artifacts
+brought back for local asset regeneration. Each grid (11 models, 3 seeds for
+learned models, two robustness suites) is ~19–20 h on a desktop CPU but a few
+hours on a Colab GPU. Everything is file-existence resumable, so disconnects
+are harmless: just re-run the cell.
+
+- **Beijing** (UCI id 501) — auto-downloaded; see below.
+- **Delhi** (CPCB; Mendeley `bzhzr9b64v`) — the intermediate-imputability
+  third network; CSVs are placed manually (see the Delhi section).
+
+## Beijing
 
 ## Steps
 
@@ -52,6 +59,51 @@ re-run the cell.
    The first writes the Beijing tables/figures (`main_results_pm25`,
    `robustness_rmse`, ... under `outputs/beijing/`); the second refreshes the
    Dhaka assets **and** the `cross_dataset_summary` table.
+
+## Delhi
+
+The Delhi archive is not auto-downloadable (the Mendeley "Download All" link is
+session-scoped), so the CSVs are placed manually before training.
+
+1. **Get the data:** download the archive from
+   https://data.mendeley.com/datasets/bzhzr9b64v/1 (CC BY 4.0), unzip it, and
+   put the per-station CSVs under `data/raw/delhi/` (either commit them into the
+   repo zip you upload, or upload them into that folder in Colab). Optionally,
+   if you have a stable direct `.zip` URL, set `data.archive_url` in
+   `config_delhi.yaml` and the prep step will fetch it automatically.
+
+2. **In Colab** (GPU runtime), after unzipping the repo and placing the CSVs:
+
+   ```python
+   %cd air-transformer
+   !pip install -q pyarrow pyyaml scikit-learn statsmodels seaborn openpyxl
+   !python scripts/colab_run_delhi.py
+   ```
+
+   The runner mirrors Beijing: `01c_prepare_delhi.py` (clean + parquet),
+   `03`/`04` (same model grid × seeds 42/43/44), `05 --robustness`, then zips
+   `outputs/delhi/` + `data/processed/delhi/` into **`delhi_artifacts.zip`**.
+
+   **First-run check:** open `outputs/delhi/data_cleaning_report.md` and confirm
+   the expected columns loaded and `clean.bounds` did not clip legitimate
+   values. If a column is missing or misnamed, add a `data.column_rename` entry
+   (or adjust `measurement_cols`) in `config_delhi.yaml` and re-run — the
+   loader canonicalizes headers but cannot guess an unexpected spelling.
+
+3. **Download `delhi_artifacts.zip`**, unzip into the local repo root, then
+   regenerate the full **3-dataset** asset set locally:
+
+   ```powershell
+   python scripts/07_make_paper_assets.py --config config_delhi.yaml --skip-interpretability
+   python scripts/07_make_paper_assets.py --config config.yaml `
+       --secondary-config config_beijing.yaml --tertiary-config config_delhi.yaml `
+       --skip-interpretability
+   ```
+
+   The first writes Delhi's own tables/figures (incl. its `imputability` table);
+   the second refreshes Dhaka and builds the n-way `cross_dataset_summary`,
+   `crossover_combined`, and the headline `imputability_crossover` figure +
+   `decision_by_imputability` table across all three networks.
 
 ## Notes
 

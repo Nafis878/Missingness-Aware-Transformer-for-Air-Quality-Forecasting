@@ -1,0 +1,182 @@
+# =============================================================================
+# Third dataset: Delhi Multi-Site Air-Quality (CPCB; Mendeley bzhzr9b64v).
+# The intermediate-imputability network in the crossover study (more complete
+# and more structured than Dhaka, less complete than Beijing). Same pipeline,
+# third config — every script runs against this file via --config
+# config_delhi.yaml. Paths resolve relative to this file, so all Delhi
+# artifacts are isolated under data/{raw,processed}/delhi and outputs/delhi.
+# Model/training blocks are kept IDENTICAL to config.yaml so the cross-dataset
+# comparison isolates the dataset, not the architecture.
+#
+# NOTE: the column set, units and clean.bounds below are sensible CPCB defaults.
+# The public Mendeley archive does not publish a fixed header spec; verify them
+# against outputs/delhi/data_cleaning_report.md after the first real run and
+# adjust measurement_cols / column_rename / bounds if a column is missing or a
+# bound clips legitimate values. The loader canonicalizes headers (strips unit
+# parentheticals, folds CPCB aliases) so minor spelling differences are handled.
+# =============================================================================
+
+seed: 42
+num_threads: 8
+dataset_name: delhi          # used in captions / cross-dataset table
+
+paths:
+  raw_dir: data/raw/delhi
+  processed_dir: data/processed/delhi
+  outputs_dir: outputs/delhi
+  figures_dir: outputs/delhi/figures
+  tables_dir: outputs/delhi/tables
+  checkpoints_dir: outputs/delhi/checkpoints
+  logs_dir: outputs/delhi/logs
+  predictions_dir: outputs/delhi/predictions
+
+data:
+  loader: delhi
+  # Optional direct .zip link to the Mendeley archive. Left empty because the
+  # "Download All" link is session-scoped: download the archive manually from
+  # https://data.mendeley.com/datasets/bzhzr9b64v/1 and unzip the station CSVs
+  # into data/raw/delhi (the loader then runs offline). If you have a stable
+  # zip URL, set it here and 01c_prepare_delhi.py will fetch it.
+  archive_url: ""
+  # Per-file timestamp column (CPCB exports use "From Date", dd-mm-yyyy HH:MM);
+  # the loader also auto-detects common spellings if this is absent.
+  datetime_col: "From Date"
+  # Station name comes from this column if present, else the CSV file stem.
+  station_col: station
+  # Extra raw->canonical header overrides applied AFTER unit-strip + aliasing,
+  # for anything the alias map misses (verify on first run).
+  column_rename: {}
+  station_rename: {}
+  # WD is numeric degrees here -> converted to wd_sin/wd_cos by the loader.
+  measurement_cols:
+    [PM2.5, PM10, NO, NO2, NOX, NH3, SO2, CO, O3, Temp, RH, WS, wd_sin, wd_cos]
+  # Natural missingness is intermediate (a few % to ~15% per variable); add any
+  # variable exceeding the >75% rule here after checking the cleaning report.
+  exclude_features: []
+
+clean:
+  bounds:                    # CPCB Delhi units: PM/gases ug/m3, CO mg/m3
+    PM2.5:  [0, 1000]        # ug/m3
+    PM10:   [0, 2000]        # ug/m3
+    NO:     [0, 500]         # ug/m3
+    NO2:    [0, 500]         # ug/m3
+    NOX:    [0, 700]         # ppb/ug/m3
+    NH3:    [0, 1000]        # ug/m3
+    SO2:    [0, 500]         # ug/m3
+    CO:     [0, 50]          # mg/m3 (CPCB reports CO in mg/m3)
+    O3:     [0, 1000]        # ug/m3
+    Temp:   [-5, 52]         # degC (Delhi record range with margin)
+    RH:     [0, 100]         # %
+    WS:     [0, 30]          # m/s
+    wd_sin: [-1, 1]
+    wd_cos: [-1, 1]
+  stuck_run_length: 24
+  sentinel_values: {}        # CPCB "None"/blank coerce to NaN; add codes if found
+
+splits:                      # chronological (data 2018-06-01 .. 2019-10-01)
+  train_end: "2019-04-30 23:00:00"   # 2018-06-01 .. 2019-04-30 (~11 months)
+  val_end: "2019-06-30 23:00:00"     # 2019-05-01 .. 2019-06-30 (~2 months)
+  # test = 2019-07-01 .. 2019-10-01 (monsoon -> post-monsoon onset)
+
+dataset:                     # identical to config.yaml
+  input_length: 168
+  horizons: [6, 24, 72]
+  stride_train: 24
+  stride_eval: 24
+  target_pollutants: ["PM2.5", "PM10", "NO2", "O3", "CO", "SO2"]
+  primary_target: "PM2.5"
+  synthetic_missingness: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70]
+
+model:                       # identical to config.yaml
+  d_model: 128
+  n_layers: 3
+  n_heads: 8
+  d_ff: 256
+  dropout: 0.1
+  norm_first: true
+  pooling: "last"
+  attention_variant: "A"
+  positional_encoding: "sinusoidal"
+
+train:                       # identical to config.yaml
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  scheduler: cosine
+  max_epochs: 50
+  early_stopping_patience: 7
+  grad_clip: 1.0
+  horizon_loss_weights: [1.0, 1.0, 1.0]
+  num_workers: 0
+
+baselines:                   # identical to config.yaml
+  rnn:
+    hidden_size: 128
+    num_layers: 2
+    dropout: 0.1
+  sarima:
+    order: [1, 0, 1]
+    seasonal_order: [1, 0, 1, 24]
+    context_hours: 720
+    maxiter: 50
+  impute:
+    knn_neighbors: 5
+    knn_fit_subsample: 5000
+    mice_max_iter: 10
+    mice_fit_subsample: 50000
+  dlinear:
+    kernel_size: 25
+    station_bias: true
+  patchtst:
+    patch_len: 16
+    stride: 8
+    d_model: 128
+    n_layers: 3
+    n_heads: 8
+    d_ff: 256
+    dropout: 0.1
+  gru_d:
+    hidden_size: 128
+    dropout: 0.1
+  saits:
+    d_model: 64
+    n_heads: 4
+    d_ff: 128
+    n_layers_per_group: 1
+    dropout: 0.1
+    epochs: 30
+    patience: 5
+    batch_size: 64
+    lr: 1.0e-3
+    mit_rate: 0.2
+    segment_len: 168
+    segment_stride: 84
+
+# Robustness suites on Delhi: KNN + SAITS two-stage (SAITS is the imputability
+# probe), same direct models as the other datasets.
+robustness:
+  direct: [proposed, proposed_md, gru_d, dlinear, patchtst]
+  two_stage: [two_stage_knn, two_stage_saits]
+
+ablation:
+  seeds: [42, 43, 44]
+
+evaluation:
+  episode_threshold: 150     # same constant as the other datasets
+  seasons:                   # Delhi climate
+    12: Winter
+    1: Winter
+    2: Winter
+    3: Summer
+    4: Summer
+    5: Summer
+    6: Monsoon
+    7: Monsoon
+    8: Monsoon
+    9: Monsoon
+    10: Post-monsoon
+    11: Post-monsoon
+  season_order: [Winter, Summer, Monsoon, Post-monsoon]
+  # Filled automatically (first stations, test window) until the real station
+  # names are known; replace with [station, start, end] picks after first run.
+  example_picks: []

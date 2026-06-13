@@ -496,19 +496,18 @@ def _outage_slope_h6(cfg: dict, scalers: dict, model: str) -> float | None:
     return vals[1] - vals[0]
 
 
-def cross_dataset_table(
-    primary_cfg: dict, secondary_cfg: dict
-) -> tuple[pd.DataFrame, str]:
-    """Models present on both datasets: h24 RMSE + h6 outage-degradation.
+def cross_dataset_table(configs: list[dict]) -> tuple[pd.DataFrame, str]:
+    """Models present on every dataset: h24 RMSE + h6 outage-degradation.
 
-    Returns (table, dataset-stats sentence for the caption). RMSE cells are
-    mean +/- std over seeds for learned models (single value for statistical
-    baselines); the robustness column is the canonical-seed RMSE increase
-    from clean to +50% station-outage corruption at h6.
+    ``configs`` is the ordered list of dataset configs (two or more). Returns
+    (table, dataset-stats sentence for the caption). RMSE cells are mean +/-
+    std over seeds for learned models (single value for statistical baselines);
+    the robustness column is the canonical-seed RMSE increase from clean to
+    +50% station-outage corruption at h6.
     """
     blocks = {}
     stats_bits = []
-    for cfg in (primary_cfg, secondary_cfg):
+    for cfg in configs:
         ds_name = str(cfg.get("dataset_name", "dhaka")).capitalize()
         scalers = _load_scalers_for(cfg)
         long_df = seed_metrics_long(cfg, scalers)
@@ -624,10 +623,19 @@ def example_forecast_figure(
     """
     picks = picks or [
         tuple(p) for p in cfg.get("evaluation", {}).get("example_picks", [])
-    ] or [
-        ("Darussalam", "2024-01-05", "2024-02-05"),
-        ("Barishal", "2024-07-01", "2024-08-01"),
     ]
+    # keep only configured stations that actually exist (configs can drift /
+    # a new dataset's station names may be unknown at config-writing time)
+    picks = [p for p in picks if p[0] in stations]
+    if not picks and stations:
+        # dataset-agnostic fallback: first stations over a 30-day test window
+        v_end = pd.Timestamp(cfg["splits"]["val_end"])
+        start = (v_end + pd.Timedelta(hours=1)).strftime("%Y-%m-%d")
+        end = (v_end + pd.Timedelta(days=30)).strftime("%Y-%m-%d")
+        picks = [(s, start, end) for s in stations[:2]]
+    if not picks:
+        logger.warning("example forecasts: no usable stations, skipping")
+        return
     show = [m for m in ("proposed", "two_stage_knn", "gru") if m in bundles]
     targets = cfg["dataset"]["target_pollutants"]
     ti = targets.index("PM2.5")
@@ -893,17 +901,17 @@ def run_crossover(cfg: dict, scalers: dict, rob_tbl: pd.DataFrame | None,
     return cross
 
 
-def combined_crossover(primary_cfg: dict, secondary_cfg: dict,
+def combined_crossover(configs: list[dict],
                        figures_dir: Path, tables_dir: Path) -> None:
-    """Overlay both datasets' crossover curves on one effective-missingness axis.
+    """Overlay every dataset's crossover curve on one effective-missingness axis.
 
     This is the unifying result: by plotting the end-to-end advantage against
-    *effective input missingness* (not the nominal corruption level), the
-    near-complete and severely-incomplete networks fall on a single severity
-    axis and the crossover is dataset-agnostic.
+    *effective input missingness* (not the nominal corruption level), networks
+    of differing completeness fall on a single severity axis and the crossover
+    is dataset-agnostic. ``configs`` is the ordered list of dataset configs.
     """
     frames = []
-    for cfg in (primary_cfg, secondary_cfg):
+    for cfg in configs:
         rob = robustness_long(cfg, _load_scalers_for(cfg))
         cross = crossover_long(cfg, rob) if rob is not None else None
         if cross is None or cross.empty:
@@ -916,7 +924,7 @@ def combined_crossover(primary_cfg: dict, secondary_cfg: dict,
     allc = pd.concat(frames, ignore_index=True)
     allc.to_csv(tables_dir / "crossover_combined.csv", index=False)
 
-    horizons = primary_cfg["dataset"]["horizons"]
+    horizons = configs[0]["dataset"]["horizons"]
     h = 6 if 6 in horizons else horizons[0]
     fig, axes = plt.subplots(1, len(ROBUST_MODES),
                              figsize=(5.2 * len(ROBUST_MODES), 4.2), sharey=True)
@@ -933,11 +941,222 @@ def combined_crossover(primary_cfg: dict, secondary_cfg: dict,
     axes[0].set_ylabel(f"RMSE gap at {h} h (µg/m³)\n"
                        "← impute-then-forecast  |  end-to-end →")
     axes[0].legend(title="network", fontsize=9)
-    fig.suptitle("Missingness-severity crossover across two networks "
+    n_ds = allc["dataset"].nunique()
+    fig.suptitle(f"Missingness-severity crossover across {n_ds} networks "
                  "(gap > 0 ⇒ end-to-end wins)")
     fig.tight_layout()
     save_figure(fig, figures_dir, "crossover_combined")
-    logger.info("wrote combined crossover figure (both datasets)")
+    logger.info("wrote combined crossover figure (%d datasets)", n_ds)
+
+
+# ---------------------------------------------------------------------------
+# Series imputability: how reconstructable is a network's missingness?
+# (the measured x-axis that explains *why* a dataset crosses over or not)
+# ---------------------------------------------------------------------------
+
+def _impute_skill(
+    station_slices: list[tuple[np.ndarray, np.ndarray]],
+    model_impute,
+    ffill_impute,
+    holdout_rate: float,
+    seed: int,
+) -> dict[str, float]:
+    """Reconstruction skill on artificially-hidden *observed* cells.
+
+    For each ``(values, mask)`` slice (scaled units, missing cells already 0),
+    a seeded fraction ``holdout_rate`` of observed cells is hidden, both
+    imputers reconstruct the full array from the reduced input, and RMSE is
+    measured at the hidden cells. ``imputability = 1 - RMSE_model/RMSE_ffill``
+    (1 = perfect, 0 = no better than forward-fill, <0 = worse). Computed in
+    standardized units so it is comparable across datasets and features.
+
+    ``model_impute`` / ``ffill_impute`` are ``fn(x_zerofilled, m_in) -> recon``
+    (both (L, V)); injectable so the bookkeeping is testable without torch.
+    """
+    rng = np.random.default_rng(seed)
+    sq_m = sq_f = 0.0
+    n = 0
+    for vals, mask in station_slices:
+        obs = mask > 0
+        art = (rng.random(mask.shape) < holdout_rate) & obs
+        if not art.any():
+            continue
+        m_in = (obs & ~art).astype(np.float32)
+        x_in = (vals * m_in).astype(np.float32)
+        rec_m = np.asarray(model_impute(x_in, m_in), dtype=np.float64)
+        rec_f = np.asarray(ffill_impute(x_in, m_in), dtype=np.float64)
+        tgt = vals[art].astype(np.float64)
+        sq_m += float(((rec_m[art] - tgt) ** 2).sum())
+        sq_f += float(((rec_f[art] - tgt) ** 2).sum())
+        n += int(art.sum())
+    if n == 0:
+        return {"rmse_model": float("nan"), "rmse_ffill": float("nan"),
+                "imputability": float("nan"), "n_cells": 0}
+    rmse_m = float(np.sqrt(sq_m / n))
+    rmse_f = float(np.sqrt(sq_f / n))
+    return {
+        "rmse_model": round(rmse_m, 4),
+        "rmse_ffill": round(rmse_f, 4),
+        "imputability": round(1.0 - rmse_m / rmse_f, 4) if rmse_f > 0 else float("nan"),
+        "n_cells": n,
+    }
+
+
+def _saits_impute_array(model, x_in: np.ndarray, m_in: np.ndarray,
+                        seg_len: int) -> np.ndarray:
+    """Segment-wise SAITS reconstruction of one (L, V) station array.
+
+    Mirrors :func:`src.models.saits.impute_full_series_saits` (non-overlapping
+    windows + a right-aligned tail), but on an already-corrupted single array.
+    Hidden cells (mask 0) are reconstructed; observed cells are preserved.
+    """
+    import torch
+
+    n = len(x_in)
+    length = min(seg_len, n)
+    starts = list(range(0, n - length + 1, length)) or [0]
+    if starts[-1] + length < n:
+        starts.append(n - length)
+    out = np.empty_like(x_in)
+    filled = np.zeros(n, dtype=bool)
+    x = torch.from_numpy(np.stack([x_in[s: s + length] for s in starts]))
+    m = torch.from_numpy(np.stack([m_in[s: s + length] for s in starts]))
+    seg = model.impute(x, m).cpu().numpy()
+    for j, s in enumerate(starts):
+        rows = ~filled[s: s + length]
+        out[s: s + length][rows] = seg[j][rows]
+        filled[s: s + length] = True
+    return out
+
+
+def imputability_score(cfg: dict, scalers: dict, *, model_impute=None,
+                       ffill_impute=None, holdout_rate: float = 0.2,
+                       seed: int | None = None) -> pd.DataFrame | None:
+    """Dataset-level imputability from deep-imputer vs forward-fill skill.
+
+    Builds the test-period station arrays, hides a seeded sample of observed
+    cells, and compares SAITS reconstruction RMSE to forward-fill RMSE on those
+    cells (standardized units). Returns a one-row frame
+    ``[dataset, natural_PM25_missing_pct, imputability, rmse_model, rmse_ffill,
+    n_cells]`` or ``None`` when the SAITS checkpoint is absent. The imputers are
+    injectable so the metric is testable without a trained model (torch is only
+    imported on the default SAITS path).
+    """
+    from src.data.dataset import build_station_arrays, split_ranges
+
+    seed = cfg["seed"] if seed is None else seed
+    df = pd.read_parquet(
+        Path(cfg["paths"]["processed_dir"]) / "all_stations.parquet"
+    )
+    stations = build_station_arrays(df, cfg, scalers)
+    test_lo = np.datetime64(split_ranges(cfg)["test"][0])
+    slices = []
+    for st in stations:
+        sel = st.times >= test_lo
+        if sel.sum() == 0:
+            continue
+        slices.append((st.values[sel], st.mask[sel]))
+    if not slices:
+        return None
+
+    if ffill_impute is None:
+        from src.data.impute import ffill_mean_impute
+        ffill_impute = ffill_mean_impute
+
+    if model_impute is None:
+        ckpt = (Path(cfg["paths"]["checkpoints_dir"])
+                / f"saits_imputer_seed{seed}.pt")
+        if not ckpt.exists():
+            logger.warning("imputability: no SAITS checkpoint %s — skipping", ckpt)
+            return None
+        import torch
+        from src.models.saits import SAITS
+        model = SAITS(stations[0].values.shape[1], cfg)
+        model.load_state_dict(
+            torch.load(ckpt, weights_only=False)["model_state"]
+        )
+        model.eval()
+        seg_len = int(cfg["baselines"]["saits"]["segment_len"])
+        model_impute = lambda x, m: _saits_impute_array(model, x, m, seg_len)  # noqa: E731
+
+    skill = _impute_skill(slices, model_impute, ffill_impute, holdout_rate, seed)
+    pol = cfg["dataset"]["primary_target"]
+    row = {
+        "dataset": str(cfg.get("dataset_name", "dhaka")).capitalize(),
+        "natural_PM25_missing_pct": round(float(df[pol].isna().mean() * 100), 1),
+        **skill,
+    }
+    return pd.DataFrame([row])
+
+
+def imputability_crossover_figure(configs: list[dict], figures_dir: Path,
+                                  tables_dir: Path, *, mode: str = "out",
+                                  horizon: int = 6, level: int = 50
+                                  ) -> pd.DataFrame | None:
+    """The headline: end-to-end advantage vs *measured imputability* per dataset.
+
+    For each config, plots the end-to-end advantage at a fixed severe operating
+    point (default station-outage, 6 h, nearest level to +50%) against the
+    dataset's imputability score. The expected monotone decline through zero
+    turns the severity x imputability story into a single predictive curve.
+    Exports ``decision_by_imputability.{csv,tex}`` and
+    ``imputability_crossover.{png,pdf}``.
+    """
+    rows = []
+    for cfg in configs:
+        scalers = _load_scalers_for(cfg)
+        imp = imputability_score(cfg, scalers)
+        if imp is None or imp.empty:
+            continue
+        rob = robustness_long(cfg, scalers)
+        cross = crossover_long(cfg, rob) if rob is not None else None
+        adv = eff = float("nan")
+        if cross is not None and not cross.empty:
+            sub = cross[(cross["mode"] == mode) & (cross["horizon"] == horizon)]
+            if not sub.empty:
+                sub = sub.assign(_d=(sub["level"] - level).abs())
+                pick = sub.sort_values("_d").iloc[0]
+                adv, eff = float(pick["gap"]), float(pick["eff_missing_pct"])
+        r = imp.iloc[0].to_dict()
+        r["adv_h%d_%s%d" % (horizon, mode, level)] = (
+            round(adv, 2) if np.isfinite(adv) else float("nan"))
+        r["eff_missing_pct"] = eff
+        r["recommendation"] = (
+            "end-to-end" if np.isfinite(adv) and adv > 0
+            else "impute-then-forecast" if np.isfinite(adv) else "—")
+        rows.append(r)
+    if not rows:
+        return None
+    tbl = pd.DataFrame(rows).sort_values("imputability")
+    tbl.to_csv(tables_dir / "decision_by_imputability.csv", index=False)
+    export_table(
+        tbl.set_index("dataset"), tables_dir, "decision_by_imputability",
+        "Decision by measured imputability: per network, series imputability "
+        "(1 $-$ SAITS/ffill reconstruction RMSE on held-out observed cells) "
+        "and the end-to-end advantage at "
+        f"{horizon}\\,h under +{level}\\% station-outage corruption "
+        "(\\si{\\micro\\gram\\per\\cubic\\metre}; $>0$ favours end-to-end).",
+        "tab:decision_imputability", "%s")
+
+    adv_col = "adv_h%d_%s%d" % (horizon, mode, level)
+    fig, ax = plt.subplots(figsize=(6.4, 4.6))
+    ax.scatter(tbl["imputability"], tbl[adv_col], s=60, color="#0072B2", zorder=3)
+    if tbl[adv_col].notna().sum() >= 2:
+        g = tbl.dropna(subset=[adv_col]).sort_values("imputability")
+        ax.plot(g["imputability"], g[adv_col], color="#0072B2", lw=1, zorder=2)
+    for _, r in tbl.iterrows():
+        if np.isfinite(r[adv_col]):
+            ax.annotate(r["dataset"], (r["imputability"], r[adv_col]),
+                        textcoords="offset points", xytext=(6, 4), fontsize=9)
+    ax.axhline(0, color="0.4", lw=1, ls="--")
+    ax.set_xlabel("Series imputability  (1 − SAITS/ffill reconstruction RMSE)")
+    ax.set_ylabel(f"End-to-end advantage at {horizon} h, +{level}% outage "
+                  "(µg/m³)\n← impute-then-forecast  |  end-to-end →")
+    ax.set_title("End-to-end advantage declines with imputability")
+    fig.tight_layout()
+    save_figure(fig, figures_dir, "imputability_crossover")
+    logger.info("wrote imputability-crossover figure (%d datasets)", len(tbl))
+    return tbl
 
 
 # ---------------------------------------------------------------------------
@@ -1107,6 +1326,18 @@ def run_evaluation(cfg: dict[str, Any]) -> None:
 
     # Missingness-severity crossover study + window-stratified mechanism
     run_crossover(cfg, scalers, rob_tbl, tables_dir, figures_dir)
+
+    # Series imputability (the measured axis behind the crossover)
+    imp = imputability_score(cfg, scalers)
+    if imp is not None and not imp.empty:
+        export_table(
+            imp.set_index("dataset"), tables_dir, "imputability",
+            "Series imputability: deep-imputer (SAITS) vs forward-fill "
+            "reconstruction RMSE (standardized units) on held-out observed "
+            "test cells. imputability $= 1 - $ RMSE\\textsubscript{SAITS}/"
+            "RMSE\\textsubscript{ffill} (higher = more reconstructable).",
+            "tab:imputability", "%s")
+
     strat = stratified_gap_table(cfg, scalers)
     if strat is not None:
         export_table(

@@ -11,14 +11,21 @@ import json
 import sys
 from pathlib import Path
 
+import matplotlib
 import numpy as np
 import pandas as pd
 
+matplotlib.use("Agg")
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import src.evaluate as ev
 from src.evaluate import (
+    combined_crossover,
+    cross_dataset_table,
     crossover_long,
     crossover_points,
+    imputability_crossover_figure,
     robustness_long,
     stratified_gap_table,
 )
@@ -144,6 +151,96 @@ def test_stratified_gap_widens_with_window_missingness(tmp_path) -> None:
     gaps = tbl["gap (two-stage − end-to-end)"].to_numpy()
     assert gaps[0] < gaps[1], "gap must grow on the higher-missingness bin"
     assert gaps[1] > 0
+
+
+# ---------------------------------------------------------------------------
+# n-way cross-dataset plumbing (3 datasets)
+# ---------------------------------------------------------------------------
+
+def _full_dataset(tmp_path: Path, name: str, e2e_base: float,
+                  ts_base: float) -> dict:
+    """A self-contained dataset dir: robustness bundles + levels map + scalers
+    + a tiny parquet, enough for the cross-dataset and crossover plumbing."""
+    root = tmp_path / name
+    pred, proc = root / "pred", root / "proc"
+    pred.mkdir(parents=True)
+    proc.mkdir(parents=True)
+    c = {
+        "seed": 42, "dataset_name": name,
+        "paths": {"predictions_dir": str(pred), "outputs_dir": str(root),
+                  "processed_dir": str(proc)},
+        "dataset": {"target_pollutants": ["PM2.5", "PM10"], "horizons": [6, 24],
+                    "synthetic_missingness": [0.1, 0.3, 0.5],
+                    "primary_target": "PM2.5"},
+        "robustness": {"direct": ["proposed", "proposed_md"],
+                       "two_stage": ["two_stage_saits"]},
+        "ablation": {"seeds": [42]},
+    }
+    levels = [0, 10, 30, 50]
+    e2e_err = {lv: e2e_base + lv * 0.004 for lv in levels}
+    ts_err = {lv: ts_base + lv * 0.009 for lv in levels}
+    for lv in levels:
+        for mode in ("miss", "out"):
+            for nm, errs in (("proposed", e2e_err), ("proposed_md", e2e_err),
+                             ("two_stage_saits", ts_err)):
+                suffix = "test" if lv == 0 else f"test_{mode}{lv}"
+                write(pred / f"{nm}_{suffix}.npz", bundle(200, errs[lv]))
+    (root / "robustness_levels.json").write_text(json.dumps({
+        "clean": 0.10,
+        **{f"{m}{lv}": round(0.10 + lv / 100.0, 3)
+           for m in ("miss", "out") for lv in (10, 30, 50)},
+    }))
+    (proc / "scalers.json").write_text(json.dumps(SCALERS))
+    times = pd.date_range("2020-01-01", periods=300, freq="h")
+    pd.DataFrame({"station": "S1", "datetime": times,
+                  "PM2.5": 1.0, "PM10": 2.0}).to_parquet(
+        proc / "all_stations.parquet", index=False)
+    return c
+
+
+def test_cross_dataset_table_three_way(tmp_path) -> None:
+    cfgs = [_full_dataset(tmp_path, n, 0.5, 0.45)
+            for n in ("alpha", "beta", "gamma")]
+    tbl, stats = cross_dataset_table(cfgs)
+    top_level = {col[0] for col in tbl.columns}
+    assert {"Alpha", "Beta", "Gamma"} <= top_level
+    assert "Proposed (MAT)" in tbl.index
+    for nm in ("Alpha:", "Beta:", "Gamma:"):
+        assert nm in stats
+
+
+def test_combined_crossover_three_way(tmp_path) -> None:
+    specs = {"alpha": (0.60, 0.40), "beta": (0.55, 0.50), "gamma": (0.50, 0.70)}
+    cfgs = [_full_dataset(tmp_path, n, e, t) for n, (e, t) in specs.items()]
+    fig, tab = tmp_path / "fig", tmp_path / "tab"
+    fig.mkdir()
+    tab.mkdir()
+    combined_crossover(cfgs, fig, tab)
+    allc = pd.read_csv(tab / "crossover_combined.csv")
+    assert set(allc["dataset"]) == {"Alpha", "Beta", "Gamma"}
+    assert (fig / "crossover_combined.png").exists()
+
+
+def test_imputability_crossover_figure_three_way(tmp_path, monkeypatch) -> None:
+    specs = {"alpha": (0.60, 0.40), "beta": (0.55, 0.50), "gamma": (0.50, 0.70)}
+    cfgs = [_full_dataset(tmp_path, n, e, t) for n, (e, t) in specs.items()]
+    scores = {"Alpha": 0.1, "Beta": 0.4, "Gamma": 0.8}
+
+    def fake_imputability(cfg, scalers, **kw):
+        ds = str(cfg["dataset_name"]).capitalize()
+        return pd.DataFrame([{"dataset": ds, "natural_PM25_missing_pct": 5.0,
+                              "imputability": scores[ds], "rmse_model": 1.0,
+                              "rmse_ffill": 2.0, "n_cells": 100}])
+
+    monkeypatch.setattr(ev, "imputability_score", fake_imputability)
+    fig, tab = tmp_path / "fig2", tmp_path / "tab2"
+    fig.mkdir()
+    tab.mkdir()
+    out = imputability_crossover_figure(cfgs, fig, tab)
+    assert out is not None and len(out) == 3
+    assert list(out["imputability"]) == sorted(out["imputability"])  # sorted
+    assert (fig / "imputability_crossover.png").exists()
+    assert (tab / "decision_by_imputability.csv").exists()
 
 
 def test_crossover_returns_none_without_levels_map(tmp_path) -> None:

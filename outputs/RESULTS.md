@@ -292,6 +292,29 @@ networks in the developing world. What generalizes across both networks is
 **accuracy parity** with the strongest pipelines (including the deep imputer)
 and the **elimination of the serving-time imputation stage**.
 
+**Making imputability measurable (`imputability.*`,
+`decision_by_imputability.*`, `imputability_crossover.*`).** To turn "it depends
+on imputability" from a narrative into a *predictor*, we measure imputability
+directly: hide a seeded 20% of observed test cells and compare the trained SAITS
+imputer's reconstruction RMSE to forward-fill, `imputability = 1 −
+RMSE_SAITS/RMSE_ffill` (standardized units; higher = more reconstructable). The
+two networks order as the story predicts — **Beijing +0.20** (deep imputer beats
+ffill) vs **Dhaka −0.39** (deep imputer *worse* than ffill) — and the
+end-to-end advantage at a fixed severe operating point (h6, +50% outage)
+**declines monotonically with imputability**:
+
+| Network | imputability | end-to-end advantage (h6, +50% outage) | winner |
+|---|---|---|---|
+| Dhaka | −0.39 | **+1.69 µg/m³** | end-to-end |
+| Beijing | +0.20 | **−4.29 µg/m³** | impute-then-forecast |
+
+A **third network of intermediate completeness (Delhi, CPCB)** is being added on
+the same axis to convert these two opposite anchors into a single
+crossover-vs-imputability curve and a deployable rule ("measure imputability,
+then choose the paradigm"). Delhi results are pending the GPU training run; if
+its imputability does not interpolate between the anchors, that is reported as a
+finding (imputability necessary but not sufficient) rather than smoothed over.
+
 ## Interpretability (`interpretability_summary.json`, attention figures)
 
 Unchanged from the previous analysis (seed-42 proposed checkpoint): forecast-

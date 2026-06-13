@@ -108,6 +108,9 @@ def main() -> None:
     parser.add_argument("--secondary-config", default=None,
                         help="second dataset config (e.g. config_beijing.yaml) "
                              "for the cross-dataset summary table")
+    parser.add_argument("--tertiary-config", default=None,
+                        help="third dataset config (e.g. config_delhi.yaml) for "
+                             "the n-way cross-dataset + imputability figures")
     parser.add_argument("--skip-interpretability", action="store_true",
                         help="skip re-running attention extraction (slow-ish)")
     args = parser.parse_args()
@@ -137,24 +140,28 @@ def main() -> None:
     from src.evaluate import (
         combined_crossover,
         cross_dataset_table,
+        imputability_crossover_figure,
         run_evaluation,
     )
 
     run_evaluation(cfg)
 
-    if args.secondary_config:
-        secondary_cfg = load_config(args.secondary_config)
-        tbl, ds_stats = cross_dataset_table(cfg, secondary_cfg)
+    extra = [c for c in (args.secondary_config, args.tertiary_config) if c]
+    if extra:
+        configs = [cfg] + [load_config(c) for c in extra]
+        tbl, ds_stats = cross_dataset_table(configs)
         export_table(
             tbl, Path(cfg["paths"]["tables_dir"]), "cross_dataset_summary",
             "Cross-dataset summary (PM2.5): test RMSE at 24 h (mean $\\pm$ std "
             "over seeds for learned models) and RMSE degradation at 6 h under "
             "+50\\% station-outage corruption. " + ds_stats + ".",
             "tab:cross_dataset", "%s")
-        # the unifying crossover figure (both networks, one severity axis)
-        combined_crossover(cfg, secondary_cfg,
-                           Path(cfg["paths"]["figures_dir"]),
+        # the unifying crossover figure (all networks, one severity axis)
+        combined_crossover(configs, Path(cfg["paths"]["figures_dir"]),
                            Path(cfg["paths"]["tables_dir"]))
+        # the headline: end-to-end advantage vs measured imputability
+        imputability_crossover_figure(configs, Path(cfg["paths"]["figures_dir"]),
+                                      Path(cfg["paths"]["tables_dir"]))
 
     # Attention/importance figures (needs the trained proposed checkpoint)
     proposed_ckpt = Path(cfg["paths"]["checkpoints_dir"]) / f"proposed_seed{cfg['seed']}.pt"
