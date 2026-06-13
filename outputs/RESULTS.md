@@ -255,30 +255,42 @@ copied to `main_results_beijing.*`):
 are in fact *marginally the best* at h6 (49.4 vs KNN 49.7, SAITS 50.3), with
 GRU-D/GRU best at the longer horizons; all inside ±std.
 
-**Cross-dataset robustness — the honest twist** (`cross_dataset_summary.*`,
-`robustness_beijing.*`). The Dhaka conclusion that the proposed family degrades
-most gracefully under station outages **does not replicate on Beijing**. h6
-RMSE degradation, clean → +50% outage:
+**The missingness-severity crossover — a two-factor finding**
+(`crossover.*`, `decision_summary.*`, `crossover_combined.*`,
+`stratified_gap.*`). We trace the *advantage* (best impute-then-forecast RMSE −
+best end-to-end RMSE; positive ⇒ end-to-end wins) against **effective input
+missingness** so both networks share one severity axis. The two networks behave
+**oppositely** under station outages, and that is the result:
 
-| Model | Dhaka (23% missing) | Beijing (2% missing) |
+| Effective input missingness (h6, outage) | Dhaka gap | Beijing gap |
 |---|---|---|
-| Proposed + miss-dropout | **+2.0** (best) | +16.8 |
-| Proposed (MAT) | +3.1 | +18.5 |
-| Two-stage (KNN) | +3.5 | +18.6 |
-| Two-stage (SAITS) | +3.9 | **+13.3** (best) |
-| GRU-D | +5.0 | +15.6 |
+| low (~3–10%) | — (Dhaka starts at 33%) | +0.7 → −0.9 |
+| ~33% | −0.2 | −2.1 |
+| ~50% | +0.4 | −4.3 |
+| ~66% | **+1.7** | −4.0 |
+| ~80% | +1.0 | (n/a) |
 
-On Beijing the deep imputer **SAITS is the most robust under outages**, and the
-proposed family is mid-pack. The reason is exactly the dataset difference:
-Beijing's series are dense and strongly periodic, so even synthetic block gaps
-are reconstructable by a good imputer; Dhaka's 23% natural missingness with
-real station outages leaves genuinely little to impute from, which is where
-eliminating the imputation stage pays off. **The end-to-end robustness
-advantage is therefore specific to severely-incomplete networks — precisely
-the deployment regime the method targets — and we state that rather than imply
-it generalizes.** What *does* generalize across both networks: accuracy parity
-with the strongest pipelines (including the deep imputer) and the elimination
-of the imputation stage.
+- **Dhaka (severe, less-structured): a clean crossover.** End-to-end overtakes
+  the best impute-then-forecast pipeline above **~38% effective missingness at
+  h6** (and ~71% at h24); the advantage grows with severity. Window-stratified
+  on *natural* missingness (`stratified_gap.csv`), end-to-end trails SAITS by
+  2.1 µg/m³ on the most complete windows but **leads by 2.3 µg/m³ on the most
+  incomplete (54–100% missing)** — the same crossover, seen per-window.
+- **Beijing (near-complete, highly periodic): no crossover.** The deep imputer
+  wins under outages at **every** tested severity and its margin *grows*
+  (−0.9 → −4.3 µg/m³). Strong diurnal/seasonal structure lets SAITS reconstruct
+  even 6–48 h outage blocks, so more (well-imputed) missingness helps the
+  two-stage pipeline.
+- **Under cell-wise MCAR, the deep imputer wins throughout on both networks**
+  (the intact same-timestep cross-section is trivially imputable).
+
+**Honest conclusion:** the crossover is **not a single universal missingness
+threshold** — it depends on missingness severity *and* series imputability.
+End-to-end forecasting helps specifically in the **high-missingness,
+low-imputability** regime (Dhaka), the operational reality of incomplete
+networks in the developing world. What generalizes across both networks is
+**accuracy parity** with the strongest pipelines (including the deep imputer)
+and the **elimination of the serving-time imputation stage**.
 
 ## Interpretability (`interpretability_summary.json`, attention figures)
 

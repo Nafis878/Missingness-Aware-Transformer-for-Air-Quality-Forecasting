@@ -1,0 +1,7 @@
+mode,horizon,crossover_missing_pct,recommendation
+miss,6,>max,impute-then-forecast at all tested severities
+miss,24,>max,impute-then-forecast at all tested severities
+miss,72,<min,end-to-end at all tested severities
+out,6,>max,impute-then-forecast at all tested severities
+out,24,>max,impute-then-forecast at all tested severities
+out,72,41.1,end-to-end above ~41.1% input missingness

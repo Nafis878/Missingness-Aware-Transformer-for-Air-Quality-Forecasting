@@ -55,17 +55,20 @@ deterministic single runs):
   difference** against any of them. (A previously reported "two-stage KNN
   beats us at h24, p = 0.042" was a seed-42 artifact: across seeds
   p = 0.038 / 0.042 / 0.891. See [`outputs/RESULTS.md`](outputs/RESULTS.md).)
-- **Robustness is conditional on severe missingness — and we say so.** On
-  Dhaka (23% natural missingness), under realistic **station-outage**
-  corruption, the missingness-dropout variant has the flattest h6 degradation
-  slope (+2.0 µg/m³ at +50%) and the lowest RMSE there, beating two-stage SAITS
-  (+3.9) and KNN (+3.5). But this advantage **does not generalize to the
-  near-complete Beijing network** (2% missing): there a deep imputer (SAITS) is
-  the most robust under the same outage corruption (+13.3 vs the proposed
-  family's +16.8/+18.5), because dense, periodic series make even synthetic
-  block gaps reconstructable. Under idealized **cell-wise MCAR**, SAITS is most
-  robust on both datasets. The method helps most exactly where missingness is
-  severe — its target deployment regime.
+- **The headline: a missingness-severity crossover (two-factor, stated
+  honestly).** Tracing the end-to-end *advantage* (best impute-then-forecast −
+  best end-to-end RMSE) against effective input missingness shows the two
+  networks behave **oppositely** under station outages. On **Dhaka** (severe,
+  less-structured) end-to-end overtakes the best deep-imputer pipeline above
+  **~38% effective missingness at 6 h**, and window-stratified on natural
+  missingness it trails SAITS by 2.1 µg/m³ on the most complete windows but
+  **leads by 2.3 µg/m³ on the most incomplete**. On **Beijing** (near-complete,
+  highly periodic) the deep imputer wins under outages at *every* severity and
+  its margin grows — strong diurnal structure keeps even long outage blocks
+  imputable. Under cell-wise MCAR the deep imputer wins on both. So the choice
+  depends on missingness severity **and series imputability**, not a single
+  threshold; end-to-end forecasting helps in the high-missingness,
+  low-imputability regime — the operational reality of incomplete networks.
 - **A second monitoring network confirms parity.** On Beijing the proposed
   model and variant B are in fact *marginally the best* at 6 h (49.4 vs KNN
   49.7, SAITS 50.3 µg/m³), parity at the longer horizons.
@@ -85,7 +88,9 @@ Full consolidated numbers and the frank robustness assessment:
 All tables (CSV + booktabs LaTeX) in [`outputs/tables/`](outputs/tables/),
 all figures (300-dpi PNG + vector PDF) in [`outputs/figures/`](outputs/figures/).
 A second monitoring network (Beijing Multi-Site, UCI) is wired into the same
-pipeline as an external-validity check; see [`COLAB.md`](COLAB.md).
+pipeline as an external-validity check; see [`COLAB.md`](COLAB.md). The
+submission-ready manuscript is in [`paper/`](paper/) (build with
+`latexmk -pdf main.tex`).
 
 ## Data
 

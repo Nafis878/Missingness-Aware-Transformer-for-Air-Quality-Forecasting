@@ -89,8 +89,10 @@ dataset:
   target_pollutants: ["PM2.5", "PM10", "NO2", "O3", "CO", "SO2"]
   primary_target: "PM2.5"
   # Synthetic extra-missingness levels for the robustness ablation (MCAR drop
-  # applied to OBSERVED input values of the test set).
-  synthetic_missingness: [0.10, 0.30, 0.50]
+  # / outage blocks applied to OBSERVED input values of the test set). The
+  # fine-grained sweep drives the missingness-severity crossover study; the
+  # original [0.10, 0.30, 0.50] bundles are cached and reused.
+  synthetic_missingness: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70]
 
 model:                       # proposed Missingness-Aware Transformer
   d_model: 128

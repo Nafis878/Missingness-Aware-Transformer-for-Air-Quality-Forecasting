@@ -24,6 +24,15 @@ Conventions
   GPU-trained results are not bit-identical to CPU runs at the same seed;
   noted wherever Beijing numbers are reported.
 
+## 7→9 upgrade (crossover study + manuscript)
+
+| date | item | result / finding |
+|---|---|---|
+| 2026-06-13 | Fine-grained robustness sweep (8 levels × 2 mechanisms, both datasets) + effective-missingness logging (`robustness_levels.json`) | Dhaka effective missingness spans 32.7%→79.8%, Beijing 2.9%→71.0% — one continuous severity axis ~3–80%. |
+| 2026-06-13 | Crossover study (`crossover.*`, `decision_summary.*`, `crossover_combined.*`, `stratified_gap.*`) | **Key finding — the crossover is NOT a single universal threshold; it is two-factor (severity × series imputability).** Dhaka (severe, less-structured): end-to-end overtakes best deep-imputer pipeline above ~38% eff. missingness at h6 (~71% at h24); window-stratified, end-to-end trails SAITS by 2.1 µg/m³ on most-complete windows but **leads by 2.3 on most-incomplete (54–100%)**. Beijing (near-complete, highly periodic): deep imputer wins under outage at ALL severities, margin GROWS (−0.9→−4.3 µg/m³) — opposite slope. Under MCAR the imputer wins on both. **This is honest and more careful than the planned "universal crossover"; the manuscript and RESULTS are framed accordingly (no overclaim).** |
+| 2026-06-13 | Manuscript `paper/main.tex` (elsarticle) + `references.bib` (23 refs) + `paper/README.md` | full draft, structurally linted (balanced envs/braces, all citations defined); built around the two-factor crossover. No local TeX toolchain — user builds on Overleaf. |
+| 2026-06-13 | Beijing interpretability (`scripts/06 --config config_beijing.yaml`) | attention + importance figures (PM2.5 dominant, PRES second). |
+
 ## Run log
 
 | date | phase | command | wall-clock | artifacts | notes / contradictions |

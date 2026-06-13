@@ -134,7 +134,11 @@ def main() -> None:
                            Path(cfg["paths"]["figures_dir"]))
 
     # Table 2, 4 + evaluation figures (incl. robustness + example forecasts)
-    from src.evaluate import cross_dataset_table, run_evaluation
+    from src.evaluate import (
+        combined_crossover,
+        cross_dataset_table,
+        run_evaluation,
+    )
 
     run_evaluation(cfg)
 
@@ -147,6 +151,10 @@ def main() -> None:
             "over seeds for learned models) and RMSE degradation at 6 h under "
             "+50\\% station-outage corruption. " + ds_stats + ".",
             "tab:cross_dataset", "%s")
+        # the unifying crossover figure (both networks, one severity axis)
+        combined_crossover(cfg, secondary_cfg,
+                           Path(cfg["paths"]["figures_dir"]),
+                           Path(cfg["paths"]["tables_dir"]))
 
     # Attention/importance figures (needs the trained proposed checkpoint)
     proposed_ckpt = Path(cfg["paths"]["checkpoints_dir"]) / f"proposed_seed{cfg['seed']}.pt"

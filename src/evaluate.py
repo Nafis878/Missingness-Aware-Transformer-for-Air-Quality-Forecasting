@@ -669,22 +669,23 @@ def example_forecast_figure(
 # Robustness curve
 # ---------------------------------------------------------------------------
 
-def robustness_figure(cfg: dict, scalers: dict, figures_dir: Path,
-                      tables_dir: Path) -> pd.DataFrame | None:
-    """PM2.5 RMSE vs synthetic extra-missingness (the money figure).
+ROBUST_MODES = {"miss": "Cell-wise MCAR", "out": "Station-outage blocks"}
 
-    Two corruption mechanisms (rows of panels): cell-wise MCAR (``miss``) and
-    station-outage blocks (``out``), the latter matching the dominant
-    real-world mechanism found in the Phase 1 missingness analysis.
+
+def robustness_long(cfg: dict, scalers: dict) -> pd.DataFrame | None:
+    """Long-format PM2.5 RMSE per (mode, model, level, horizon).
+
+    Shared by the robustness figure and the crossover study. ``level`` is the
+    nominal corruption percentage (0 = clean). Returns None if the proposed
+    model's robustness bundles are incomplete.
     """
     levels = [0.0] + list(cfg["dataset"]["synthetic_missingness"])
-    modes = {"miss": "Cell-wise MCAR", "out": "Station-outage blocks"}
     ti = cfg["dataset"]["target_pollutants"].index("PM2.5")
     pred_dir = Path(cfg["paths"]["predictions_dir"])
 
     def has_all_bundles(name: str) -> bool:
         suffixes = ["test"] + [f"test_{m}{int(lv * 100)}"
-                               for m in modes for lv in levels if lv > 0]
+                               for m in ROBUST_MODES for lv in levels if lv > 0]
         return all((pred_dir / f"{name}_{s}.npz").exists() for s in suffixes)
 
     rcfg = cfg.get("robustness", {})
@@ -692,10 +693,10 @@ def robustness_figure(cfg: dict, scalers: dict, figures_dir: Path,
         list(rcfg.get("two_stage", ["two_stage_knn", "two_stage_mice"]))
     models = [m for m in candidates if has_all_bundles(m)]
     if "proposed" not in models:
-        logger.warning("robustness: proposed bundles incomplete, skipping figure")
+        logger.warning("robustness: proposed bundles incomplete, skipping")
         return None
     rows = []
-    for mode in modes:
+    for mode in ROBUST_MODES:
         for name in models:
             for level in levels:
                 suffix = "test" if level == 0 else f"test_{mode}{int(level * 100)}"
@@ -704,10 +705,19 @@ def robustness_figure(cfg: dict, scalers: dict, figures_dir: Path,
                     m = b["target_mask"][:, ti, hi] > 0
                     p = unscale(b["predictions"][m, ti, hi], "PM2.5", scalers)
                     y = unscale(b["targets"][m, ti, hi], "PM2.5", scalers)
-                    rows.append({"mode": mode, "model": MODEL_LABELS.get(name, name),
+                    rows.append({"mode": mode, "name": name,
+                                 "model": MODEL_LABELS.get(name, name),
                                  "level": int(level * 100), "horizon": h,
                                  "RMSE": _metrics(p, y)["RMSE"]})
-    tbl = pd.DataFrame(rows)
+    return pd.DataFrame(rows)
+
+
+def robustness_figure(cfg: dict, scalers: dict, figures_dir: Path,
+                      tables_dir: Path) -> pd.DataFrame | None:
+    """PM2.5 RMSE vs synthetic extra-missingness (the money figure)."""
+    tbl = robustness_long(cfg, scalers)
+    if tbl is None:
+        return None
     export_table(
         tbl.pivot_table(index=["mode", "model", "horizon"], columns="level",
                         values="RMSE").round(2),
@@ -719,25 +729,308 @@ def robustness_figure(cfg: dict, scalers: dict, figures_dir: Path,
         "imputer, transform-only.",
         "tab:robustness", float_format="%.2f",
     )
+    xticks = sorted(tbl["level"].unique())
     fig, axes = plt.subplots(2, 3, figsize=(11, 6.4), sharex=True)
-    for row_i, (mode, mode_label) in enumerate(modes.items()):
+    for row_i, (mode, mode_label) in enumerate(ROBUST_MODES.items()):
         for col_i, h in enumerate(cfg["dataset"]["horizons"]):
             ax = axes[row_i, col_i]
             sub = tbl[(tbl["horizon"] == h) & (tbl["mode"] == mode)]
             for model, grp in sub.groupby("model", sort=False):
-                ax.plot(grp["level"], grp["RMSE"], marker="o", label=model)
+                ax.plot(grp["level"], grp["RMSE"], marker="o", markersize=3,
+                        label=model)
             if row_i == 0:
                 ax.set_title(f"{h} h ahead")
             if row_i == 1:
                 ax.set_xlabel("Additional missingness (%)")
             if col_i == 0:
                 ax.set_ylabel(f"{mode_label}\nPM2.5 RMSE (µg/m³)")
-            ax.set_xticks([0, 10, 30, 50])
-    axes[0, 0].legend(fontsize=8)
+            ax.set_xticks(xticks)
+    axes[0, 0].legend(fontsize=7)
     fig.suptitle("Robustness to additional input missingness (test period)")
     fig.tight_layout()
     save_figure(fig, figures_dir, "robustness_curve")
     return tbl
+
+
+# ---------------------------------------------------------------------------
+# Missingness-severity crossover study (impute-then-forecast vs end-to-end)
+# ---------------------------------------------------------------------------
+
+#: end-to-end (mask-native) model names and impute-then-forecast names.
+END_TO_END = ["proposed", "proposed_md", "variant_B"]
+TWO_STAGE = ["two_stage_knn", "two_stage_mice", "two_stage_saits"]
+
+
+def _levels_map(cfg: dict) -> dict:
+    """Effective test-input missingness per corruption key (from script 05)."""
+    p = Path(cfg["paths"]["outputs_dir"]) / "robustness_levels.json"
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+
+
+def crossover_long(cfg: dict, rob_tbl: pd.DataFrame) -> pd.DataFrame | None:
+    """Per (mode, horizon, level): best two-stage − best end-to-end RMSE.
+
+    The gap is positive when end-to-end forecasting wins. The x-axis is the
+    *effective* mean test-input missingness (natural + injected), read from
+    ``robustness_levels.json`` so curves are comparable across datasets.
+    """
+    lm = _levels_map(cfg)
+    if rob_tbl is None or not lm:
+        return None
+    have = set(rob_tbl["name"])
+    e2e = [m for m in END_TO_END if m in have]
+    ts = [m for m in TWO_STAGE if m in have]
+    if not e2e or not ts:
+        return None
+
+    def eff(mode: str, level: int) -> float | None:
+        return lm.get("clean") if level == 0 else lm.get(f"{mode}{level}")
+
+    rows = []
+    for mode in rob_tbl["mode"].unique():
+        for h in cfg["dataset"]["horizons"]:
+            sub = rob_tbl[(rob_tbl["mode"] == mode) & (rob_tbl["horizon"] == h)]
+            for level in sorted(sub["level"].unique()):
+                em = eff(mode, int(level))
+                if em is None:
+                    continue
+                s = sub[sub["level"] == level]
+                best_e2e = s[s["name"].isin(e2e)]["RMSE"].min()
+                best_ts = s[s["name"].isin(ts)]["RMSE"].min()
+                if not (np.isfinite(best_e2e) and np.isfinite(best_ts)):
+                    continue
+                rows.append({
+                    "mode": mode, "horizon": h, "level": int(level),
+                    "eff_missing_pct": round(em * 100, 1),
+                    "best_two_stage": round(best_ts, 2),
+                    "best_end_to_end": round(best_e2e, 2),
+                    "gap": round(best_ts - best_e2e, 2),  # >0 => end-to-end wins
+                })
+    return pd.DataFrame(rows)
+
+
+def crossover_points(cross_df: pd.DataFrame) -> pd.DataFrame:
+    """Effective missingness at which end-to-end overtakes impute-then-forecast.
+
+    Linear interpolation of the first negative→positive zero crossing of the
+    gap vs effective-missingness curve, per (mode, horizon). Reports a decision
+    recommendation. ``<min`` = end-to-end already wins at the lowest tested
+    severity; ``>max`` = impute-then-forecast wins throughout.
+    """
+    rows = []
+    for (mode, h), g in cross_df.groupby(["mode", "horizon"]):
+        g = g.sort_values("eff_missing_pct")
+        x, y = g["eff_missing_pct"].to_numpy(), g["gap"].to_numpy()
+        cp: float | str
+        if (y > 0).all():
+            cp = "<min"
+        elif (y <= 0).all():
+            cp = ">max"
+        else:
+            cp = ">max"
+            for i in range(1, len(x)):
+                if y[i - 1] < 0 <= y[i]:
+                    cp = round(x[i - 1] + (-y[i - 1]) * (x[i] - x[i - 1])
+                               / (y[i] - y[i - 1]), 1)
+                    break
+        rec = ("end-to-end at all tested severities" if cp == "<min"
+               else "impute-then-forecast at all tested severities" if cp == ">max"
+               else f"end-to-end above ~{cp}% input missingness")
+        rows.append({"mode": mode, "horizon": h,
+                     "crossover_missing_pct": cp, "recommendation": rec})
+    return pd.DataFrame(rows)
+
+
+def crossover_figure(cross_df: pd.DataFrame, cfg: dict, figures_dir: Path,
+                     name: str = "crossover_curve") -> None:
+    """Gap (best two-stage − best end-to-end) vs effective input missingness."""
+    horizons = cfg["dataset"]["horizons"]
+    fig, axes = plt.subplots(1, len(ROBUST_MODES),
+                             figsize=(5.2 * len(ROBUST_MODES), 4.2), sharey=True)
+    axes = np.atleast_1d(axes)
+    for ax, (mode, mlabel) in zip(axes, ROBUST_MODES.items()):
+        for h in horizons:
+            g = cross_df[(cross_df["mode"] == mode)
+                         & (cross_df["horizon"] == h)].sort_values("eff_missing_pct")
+            if g.empty:
+                continue
+            ax.plot(g["eff_missing_pct"], g["gap"], marker="o", markersize=3,
+                    label=f"{h} h")
+        ax.axhline(0, color="0.4", lw=1, ls="--")
+        ax.set_title(mlabel)
+        ax.set_xlabel("Effective input missingness (%)")
+    axes[0].set_ylabel("RMSE gap (µg/m³)\n← impute-then-forecast  |  end-to-end →")
+    axes[0].legend(title="horizon", fontsize=8)
+    fig.suptitle("When does end-to-end beat impute-then-forecast? "
+                 "(gap > 0 ⇒ end-to-end wins)")
+    fig.tight_layout()
+    save_figure(fig, figures_dir, name)
+
+
+def run_crossover(cfg: dict, scalers: dict, rob_tbl: pd.DataFrame | None,
+                  tables_dir: Path, figures_dir: Path) -> pd.DataFrame | None:
+    """Build and export the crossover table, decision summary, and figure."""
+    if rob_tbl is None:
+        return None
+    cross = crossover_long(cfg, rob_tbl)
+    if cross is None or cross.empty:
+        logger.warning("crossover: insufficient bundles or robustness_levels.json")
+        return None
+    export_table(
+        cross.set_index(["mode", "horizon", "level"]),
+        tables_dir, "crossover",
+        "Missingness-severity crossover (PM2.5): best impute-then-forecast "
+        "minus best end-to-end RMSE (\\si{\\micro\\gram\\per\\cubic\\metre}) "
+        "vs effective test-input missingness. Positive gap = end-to-end wins.",
+        "tab:crossover", "%.2f")
+    pts = crossover_points(cross)
+    export_table(
+        pts.set_index(["mode", "horizon"]), tables_dir, "decision_summary",
+        "Decision rule: effective input missingness at which end-to-end "
+        "forecasting overtakes impute-then-forecast, per mechanism and horizon.",
+        "tab:decision", "%s")
+    crossover_figure(cross, cfg, figures_dir)
+    return cross
+
+
+def combined_crossover(primary_cfg: dict, secondary_cfg: dict,
+                       figures_dir: Path, tables_dir: Path) -> None:
+    """Overlay both datasets' crossover curves on one effective-missingness axis.
+
+    This is the unifying result: by plotting the end-to-end advantage against
+    *effective input missingness* (not the nominal corruption level), the
+    near-complete and severely-incomplete networks fall on a single severity
+    axis and the crossover is dataset-agnostic.
+    """
+    frames = []
+    for cfg in (primary_cfg, secondary_cfg):
+        rob = robustness_long(cfg, _load_scalers_for(cfg))
+        cross = crossover_long(cfg, rob) if rob is not None else None
+        if cross is None or cross.empty:
+            continue
+        cross = cross.copy()
+        cross["dataset"] = str(cfg.get("dataset_name", "dhaka")).capitalize()
+        frames.append(cross)
+    if not frames:
+        return
+    allc = pd.concat(frames, ignore_index=True)
+    allc.to_csv(tables_dir / "crossover_combined.csv", index=False)
+
+    horizons = primary_cfg["dataset"]["horizons"]
+    h = 6 if 6 in horizons else horizons[0]
+    fig, axes = plt.subplots(1, len(ROBUST_MODES),
+                             figsize=(5.2 * len(ROBUST_MODES), 4.2), sharey=True)
+    axes = np.atleast_1d(axes)
+    for ax, (mode, mlabel) in zip(axes, ROBUST_MODES.items()):
+        for ds_name, g in allc[(allc["mode"] == mode)
+                               & (allc["horizon"] == h)].groupby("dataset"):
+            g = g.sort_values("eff_missing_pct")
+            ax.plot(g["eff_missing_pct"], g["gap"], marker="o", markersize=4,
+                    label=ds_name)
+        ax.axhline(0, color="0.4", lw=1, ls="--")
+        ax.set_title(mlabel)
+        ax.set_xlabel("Effective input missingness (%)")
+    axes[0].set_ylabel(f"RMSE gap at {h} h (µg/m³)\n"
+                       "← impute-then-forecast  |  end-to-end →")
+    axes[0].legend(title="network", fontsize=9)
+    fig.suptitle("Missingness-severity crossover across two networks "
+                 "(gap > 0 ⇒ end-to-end wins)")
+    fig.tight_layout()
+    save_figure(fig, figures_dir, "crossover_combined")
+    logger.info("wrote combined crossover figure (both datasets)")
+
+
+# ---------------------------------------------------------------------------
+# Window-stratified mechanism: does the end-to-end advantage track per-window
+# input missingness?
+# ---------------------------------------------------------------------------
+
+def window_input_missingness(cfg: dict) -> dict[tuple[int, int], float]:
+    """Per-window mean input missingness on the test set, keyed by
+    ``(station_id, anchor_time)`` so it aligns to any saved bundle.
+
+    Recomputed offline from the windowed dataset (no retraining / no
+    re-inference). Imported lazily so :mod:`src.evaluate` stays torch-free for
+    pure-table unit tests.
+    """
+    from src.data.dataset import make_datasets
+
+    datasets, _, _ = make_datasets(cfg)
+    ds = datasets["test"]
+    out: dict[tuple[int, int], float] = {}
+    for i in range(len(ds)):
+        s = ds[i]
+        key = (int(s["station_id"]), int(s["anchor_time"]))
+        out[key] = float((s["mask"].numpy() == 0).mean())
+    return out
+
+
+def stratified_gap_table(cfg: dict, scalers: dict, n_bins: int = 5,
+                         horizon: int | None = None,
+                         wim: dict[tuple[int, int], float] | None = None,
+                         ) -> pd.DataFrame | None:
+    """Clean-test PM2.5 RMSE of end-to-end vs best two-stage, stratified by the
+    window's input missingness. The gap is expected to widen on the most
+    incomplete windows — mechanistic evidence rather than an aggregate.
+
+    ``wim`` (``(station_id, anchor_time) -> missingness``) is computed via
+    :func:`window_input_missingness` when not supplied (injectable for tests).
+    """
+    pred_dir = Path(cfg["paths"]["predictions_dir"])
+    e2e = "proposed_md" if (pred_dir / "proposed_md_test.npz").exists() else "proposed"
+    ts = next((t for t in ("two_stage_saits", "two_stage_knn", "two_stage_mice")
+               if (pred_dir / f"{t}_test.npz").exists()), None)
+    if ts is None or not (pred_dir / f"{e2e}_test.npz").exists():
+        return None
+    horizon = horizon or (6 if 6 in cfg["dataset"]["horizons"]
+                          else cfg["dataset"]["horizons"][0])
+    ti = cfg["dataset"]["target_pollutants"].index("PM2.5")
+    hi = cfg["dataset"]["horizons"].index(horizon)
+    if wim is None:
+        wim = window_input_missingness(cfg)
+
+    def load(name):
+        b = dict(np.load(pred_dir / f"{name}_test.npz"))
+        miss = np.array([wim.get((int(s), int(a)), np.nan)
+                         for s, a in zip(b["station_id"], b["anchor_time"])])
+        return b, miss
+
+    be, miss = load(e2e)
+    bt, _ = load(ts)
+    valid = np.isfinite(miss)
+    edges = np.quantile(miss[valid], np.linspace(0, 1, n_bins + 1))
+    edges[-1] += 1e-9
+    e2e_lbl, ts_lbl = MODEL_LABELS.get(e2e, e2e), MODEL_LABELS.get(ts, ts)
+    rows = []
+    for bi in range(n_bins):
+        sel = valid & (miss >= edges[bi]) & (miss < edges[bi + 1])
+        m = sel & (be["target_mask"][:, ti, hi] > 0) & (bt["target_mask"][:, ti, hi] > 0)
+        m &= np.isfinite(be["predictions"][:, ti, hi]) & np.isfinite(bt["predictions"][:, ti, hi])
+        y = unscale(be["targets"][m, ti, hi], "PM2.5", scalers)
+        re = _metrics(unscale(be["predictions"][m, ti, hi], "PM2.5", scalers), y)["RMSE"]
+        rt = _metrics(unscale(bt["predictions"][m, ti, hi], "PM2.5", scalers), y)["RMSE"]
+        rows.append({
+            "missingness_bin": f"{edges[bi] * 100:.0f}-{edges[bi + 1] * 100:.0f}%",
+            "mid_missing_pct": round((edges[bi] + edges[bi + 1]) / 2 * 100, 1),
+            "n": int(m.sum()), e2e_lbl: round(re, 2), ts_lbl: round(rt, 2),
+            "gap (two-stage − end-to-end)": round(rt - re, 2),
+        })
+    return pd.DataFrame(rows)
+
+
+def stratified_gap_figure(tbl: pd.DataFrame, cfg: dict, figures_dir: Path) -> None:
+    horizon = 6 if 6 in cfg["dataset"]["horizons"] else cfg["dataset"]["horizons"][0]
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.bar(tbl["missingness_bin"], tbl["gap (two-stage − end-to-end)"],
+           color="#0072B2", width=0.7)
+    ax.axhline(0, color="0.4", lw=1)
+    ax.set_xlabel("Per-window input missingness")
+    ax.set_ylabel(f"RMSE gap at {horizon} h (µg/m³)\ntwo-stage − end-to-end")
+    ax.set_title("End-to-end advantage by window incompleteness "
+                 "(positive ⇒ end-to-end better)")
+    plt.setp(ax.get_xticklabels(), rotation=0, fontsize=8)
+    fig.tight_layout()
+    save_figure(fig, figures_dir, "stratified_gap")
 
 
 # ---------------------------------------------------------------------------
@@ -810,7 +1103,18 @@ def run_evaluation(cfg: dict[str, Any]) -> None:
                  "tab:efficiency", "%.2f")
 
     example_forecast_figure(bundles, cfg, scalers, df, stations, figures_dir)
-    robustness_figure(cfg, scalers, figures_dir, tables_dir)
+    rob_tbl = robustness_figure(cfg, scalers, figures_dir, tables_dir)
+
+    # Missingness-severity crossover study + window-stratified mechanism
+    run_crossover(cfg, scalers, rob_tbl, tables_dir, figures_dir)
+    strat = stratified_gap_table(cfg, scalers)
+    if strat is not None:
+        export_table(
+            strat.set_index("missingness_bin"), tables_dir, "stratified_gap",
+            "Clean-test PM2.5 RMSE of end-to-end vs best two-stage, stratified "
+            "by per-window input missingness; positive gap = end-to-end better.",
+            "tab:stratified", "%s")
+        stratified_gap_figure(strat, cfg, figures_dir)
     logger.info("evaluation complete")
 
 

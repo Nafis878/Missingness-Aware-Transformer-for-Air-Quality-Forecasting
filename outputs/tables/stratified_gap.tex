@@ -1,0 +1,16 @@
+\begin{table}
+\caption{Clean-test PM2.5 RMSE of end-to-end vs best two-stage, stratified by per-window input missingness; positive gap = end-to-end better.}
+\label{tab:stratified}
+\begin{tabular}{lrrrrr}
+\toprule
+ & mid\_missing\_pct & n & Proposed + miss-dropout & Two-stage (SAITS) & gap (two-stage − end-to-end) \\
+missingness_bin &  &  &  &  &  \\
+\midrule
+0-10\% & 4.9 & 1053 & 49.75 & 47.66 & -2.1 \\
+10-19\% & 14.6 & 964 & 45.52 & 43.93 & -1.59 \\
+19-32\% & 25.8 & 926 & 49.58 & 48.34 & -1.25 \\
+32-54\% & 43.1 & 802 & 62.88 & 62.64 & -0.24 \\
+54-100\% & 76.9 & 714 & 115.43 & 117.77 & 2.34 \\
+\bottomrule
+\end{tabular}
+\end{table}

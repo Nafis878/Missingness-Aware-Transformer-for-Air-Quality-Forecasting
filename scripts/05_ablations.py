@@ -51,6 +51,23 @@ ALL_VARIANTS = ["full", "no_miss_embed", "variant_B", "no_met", "no_time",
                 "seq72", "seq336", "single_h24", "miss_dropout"]
 
 
+def _test_input_missingness(stations, cfg: dict) -> float:
+    """Mean fraction of MISSING input cells over the test period (times > val_end).
+
+    The realized severity of a (possibly corrupted) set of station arrays;
+    used as the crossover study's x-axis.
+    """
+    import pandas as pd
+
+    val_end = pd.Timestamp(cfg["splits"]["val_end"]).to_datetime64()
+    miss = tot = 0.0
+    for st in stations:
+        m = st.mask[st.times > val_end]
+        miss += float((m == 0).sum())
+        tot += float(m.size)
+    return miss / max(tot, 1.0)
+
+
 def variant_setup(variant: str, base_cfg: dict) -> tuple[dict, dict, int | None]:
     """Return (cfg, model_kwargs, input_length) for one ablation variant."""
     cfg = copy.deepcopy(base_cfg)
@@ -291,15 +308,28 @@ def run_robustness(base_cfg: dict) -> None:
     #          per the Phase 1 analysis; hard case for row-wise imputers)
     corruptors = {"miss": corrupt_test_inputs, "out": corrupt_test_outages}
     pred_dir = Path(cfg["paths"]["predictions_dir"])
+
+    # Effective (realized) mean test-input missingness per (mode, level), the
+    # x-axis of the missingness-severity crossover study. Stored alongside the
+    # bundles so src.evaluate can plot the gap against true severity rather than
+    # the nominal corruption level.
+    levels_path = Path(cfg["paths"]["outputs_dir"]) / "robustness_levels.json"
+    levels_map = (json.loads(levels_path.read_text(encoding="utf-8"))
+                  if levels_path.exists() else {})
+    levels_map.setdefault("clean", _test_input_missingness(stations, cfg))
+
     for mode, corrupt_fn in corruptors.items():
         for level in cfg["dataset"]["synthetic_missingness"]:
             suffix = f"test_{mode}{int(level * 100)}"
+            key = f"{mode}{int(level * 100)}"
             expected = [pred_dir / f"{m}_{suffix}.npz"
                         for m in (*models_direct, *two_stage)]
-            if all(p.exists() for p in expected):
+            if all(p.exists() for p in expected) and key in levels_map:
                 logger.info("robustness %s: bundles exist, skipping", suffix)
                 continue
             corrupted = corrupt_fn(stations, cfg, level, seed)
+            levels_map[key] = _test_input_missingness(corrupted, cfg)
+            levels_path.write_text(json.dumps(levels_map, indent=2), encoding="utf-8")
 
             ds = AirQualityWindowDataset(corrupted, "test", cfg)
             assert np.array_equal(ds.index, datasets["test"].index), \

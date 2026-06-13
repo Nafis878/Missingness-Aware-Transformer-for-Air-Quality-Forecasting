@@ -63,7 +63,7 @@ dataset:                     # identical to Dhaka
   stride_eval: 24
   target_pollutants: ["PM2.5", "PM10", "NO2", "O3", "CO", "SO2"]
   primary_target: "PM2.5"
-  synthetic_missingness: [0.10, 0.30, 0.50]
+  synthetic_missingness: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70]
 
 model:                       # identical to config.yaml
   d_model: 128
