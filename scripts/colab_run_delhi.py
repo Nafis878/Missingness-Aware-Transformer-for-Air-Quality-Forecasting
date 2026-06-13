@@ -4,15 +4,14 @@ Usage (in a Colab cell, after unzipping/cloning the repo)::
 
     %cd air-transformer
     !pip install -q pyarrow pyyaml scikit-learn statsmodels seaborn openpyxl
-    # Place the Delhi station CSVs in data/raw/delhi/ first (see COLAB.md):
-    #   - either set data.archive_url in config_delhi.yaml to a direct .zip URL
-    #   - or upload the CSVs from the Mendeley archive bzhzr9b64v into that dir
     !python scripts/colab_run_delhi.py
 
 Runs the full Delhi experiment grid (prep -> all learned models x 3 seeds ->
 robustness suites) against ``config_delhi.yaml`` and zips the artifacts for
-download. Every step resumes from existing files, so a Colab disconnect just
-means re-running this script.
+download. The 6 CPCB station CSVs are auto-downloaded from their content-
+addressed Mendeley URLs (see ``src/data/load_delhi.py: DELHI_FILES``), so this
+is genuinely one command. Every step resumes from existing files, so a Colab
+disconnect just means re-running this script.
 
 Model grid (matched to the Beijing run for cross-dataset comparability —
 no SARIMA/LSTM/MICE): persistence, seasonal_naive, gru, gru_d, dlinear,

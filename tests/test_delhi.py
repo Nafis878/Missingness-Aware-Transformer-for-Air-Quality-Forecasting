@@ -26,6 +26,7 @@ from src.data.dataset import (
     compute_scalers,
 )
 from src.data.load_delhi import (
+    DELHI_FILES,
     canon_header,
     download_delhi,
     load_all_delhi,
@@ -228,6 +229,31 @@ def test_download_delhi_short_circuits_when_csvs_exist(tmp_path, monkeypatch) ->
     assert len(out) == 1
 
 
-def test_download_delhi_no_url_no_csvs_raises(tmp_path) -> None:
-    with pytest.raises(FileNotFoundError, match="archive_url"):
-        download_delhi(tmp_path / "empty", None)
+class _FakeResp:
+    def __init__(self, data: bytes) -> None:
+        self._d = data
+
+    def read(self) -> bytes:
+        return self._d
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_download_delhi_auto_downloads_manifest(tmp_path, monkeypatch) -> None:
+    """No URL + no CSVs -> fetch the 6 published station files (mocked)."""
+    import urllib.request
+
+    calls: list[str] = []
+
+    def fake_urlopen(url, timeout=0):
+        calls.append(url)
+        return _FakeResp(b"PM2.5,year,month,day,hour\n1.0,2018,6,1,0\n")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    out = download_delhi(tmp_path / "raw", None)
+    assert len(out) == len(DELHI_FILES) == 6
+    assert all(u.endswith("file_downloaded") for u in calls)

@@ -308,12 +308,16 @@ end-to-end advantage at a fixed severe operating point (h6, +50% outage)
 | Dhaka | −0.39 | **+1.69 µg/m³** | end-to-end |
 | Beijing | +0.20 | **−4.29 µg/m³** | impute-then-forecast |
 
-A **third network of intermediate completeness (Delhi, CPCB)** is being added on
-the same axis to convert these two opposite anchors into a single
+A **third network (Delhi, CPCB; 6 sites, 2018–2019)** is being added on the same
+axis to convert these two opposite anchors into a single
 crossover-vs-imputability curve and a deployable rule ("measure imputability,
-then choose the paradigm"). Delhi results are pending the GPU training run; if
-its imputability does not interpolate between the anchors, that is reported as a
-finding (imputability necessary but not sufficient) rather than smoothed over.
+then choose the paradigm"). The published Delhi series is complete (gap-free, no
+natural missingness) but extreme and spiky (PM2.5 mean ≈ 93, std ≈ 98
+µg/m³), so it probes whether a *complete-but-noisy* network is reconstructable —
+making the x-axis genuinely **imputability**, not completeness. Delhi results
+are pending the GPU training run; if its imputability does not land between the
+anchors, that is reported as a finding (imputability necessary but not
+sufficient) rather than smoothed over.
 
 ## Interpretability (`interpretability_summary.json`, attention figures)
 

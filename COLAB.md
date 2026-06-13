@@ -62,17 +62,14 @@ are harmless: just re-run the cell.
 
 ## Delhi
 
-The Delhi archive is not auto-downloadable (the Mendeley "Download All" link is
-session-scoped), so the CSVs are placed manually before training.
+The 6 CPCB station files (CC BY 4.0) **auto-download** from their content-
+addressed Mendeley URLs, so the run is one command. (Schema, units and bounds
+in `config_delhi.yaml` were verified against the published files: integer
+year/month/day/hour timestamp, `AT`/`Ozone`/`NOx` folded to `Temp`/`O3`/`NOX`,
+numeric `WD` → `wd_sin`/`wd_cos`; the series is published complete, so Delhi is
+the *complete-network* anchor of the imputability study.)
 
-1. **Get the data:** download the archive from
-   https://data.mendeley.com/datasets/bzhzr9b64v/1 (CC BY 4.0), unzip it, and
-   put the per-station CSVs under `data/raw/delhi/` (either commit them into the
-   repo zip you upload, or upload them into that folder in Colab). Optionally,
-   if you have a stable direct `.zip` URL, set `data.archive_url` in
-   `config_delhi.yaml` and the prep step will fetch it automatically.
-
-2. **In Colab** (GPU runtime), after unzipping the repo and placing the CSVs:
+1. **In Colab** (GPU runtime), after unzipping the repo:
 
    ```python
    %cd air-transformer
@@ -80,17 +77,15 @@ session-scoped), so the CSVs are placed manually before training.
    !python scripts/colab_run_delhi.py
    ```
 
-   The runner mirrors Beijing: `01c_prepare_delhi.py` (clean + parquet),
-   `03`/`04` (same model grid × seeds 42/43/44), `05 --robustness`, then zips
-   `outputs/delhi/` + `data/processed/delhi/` into **`delhi_artifacts.zip`**.
+   The runner mirrors Beijing: `01c_prepare_delhi.py` (download + clean +
+   parquet), `03`/`04` (same model grid × seeds 42/43/44), `05 --robustness`,
+   then zips `outputs/delhi/` + `data/processed/delhi/` into
+   **`delhi_artifacts.zip`**. (If `archive.ics`-style access is ever blocked,
+   set `data.archive_url` in `config_delhi.yaml` to an offline mirror zip, or
+   drop the CSVs into `data/raw/delhi/` manually — the runner then skips the
+   download.)
 
-   **First-run check:** open `outputs/delhi/data_cleaning_report.md` and confirm
-   the expected columns loaded and `clean.bounds` did not clip legitimate
-   values. If a column is missing or misnamed, add a `data.column_rename` entry
-   (or adjust `measurement_cols`) in `config_delhi.yaml` and re-run — the
-   loader canonicalizes headers but cannot guess an unexpected spelling.
-
-3. **Download `delhi_artifacts.zip`**, unzip into the local repo root, then
+2. **Download `delhi_artifacts.zip`**, unzip into the local repo root, then
    regenerate the full **3-dataset** asset set locally:
 
    ```powershell

@@ -8,12 +8,12 @@
 # Model/training blocks are kept IDENTICAL to config.yaml so the cross-dataset
 # comparison isolates the dataset, not the architecture.
 #
-# NOTE: the column set, units and clean.bounds below are sensible CPCB defaults.
-# The public Mendeley archive does not publish a fixed header spec; verify them
-# against outputs/delhi/data_cleaning_report.md after the first real run and
-# adjust measurement_cols / column_rename / bounds if a column is missing or a
-# bound clips legitimate values. The loader canonicalizes headers (strips unit
-# parentheticals, folds CPCB aliases) so minor spelling differences are handled.
+# The column set, units and bounds below were VERIFIED against the published
+# files (6 stations, header: ,PM2.5,year,month,day,hour,PM10,AT,BP,SR,RH,WS,WD,
+# NO,NO2,SO2,Ozone,CO,Benzene,NH3,NOx). The timestamp is integer y/m/d/h (built
+# by the loader, like Beijing). The series is published already cleaned to
+# completeness (no natural gaps): Delhi is the COMPLETE-network anchor, so its
+# place on the crossover curve is set by series imputability, not by missingness.
 # =============================================================================
 
 seed: 42
@@ -32,46 +32,44 @@ paths:
 
 data:
   loader: delhi
-  # Optional direct .zip link to the Mendeley archive. Left empty because the
-  # "Download All" link is session-scoped: download the archive manually from
-  # https://data.mendeley.com/datasets/bzhzr9b64v/1 and unzip the station CSVs
-  # into data/raw/delhi (the loader then runs offline). If you have a stable
-  # zip URL, set it here and 01c_prepare_delhi.py will fetch it.
+  # The 6 station files auto-download from their content-addressed Mendeley URLs
+  # (see src/data/load_delhi.py: DELHI_FILES). Set a direct .zip URL here only
+  # to override that (e.g. an offline mirror); leave empty for auto-download.
   archive_url: ""
-  # Per-file timestamp column (CPCB exports use "From Date", dd-mm-yyyy HH:MM);
-  # the loader also auto-detects common spellings if this is absent.
-  datetime_col: "From Date"
-  # Station name comes from this column if present, else the CSV file stem.
-  station_col: station
-  # Extra raw->canonical header overrides applied AFTER unit-strip + aliasing,
-  # for anything the alias map misses (verify on first run).
+  # Timestamp is integer year/month/day/hour columns (built by the loader);
+  # this is only a fallback if those are ever absent.
+  datetime_col: ""
+  station_col: station       # absent in the files -> station = file stem (-_Hourly)
+  # Extra raw->canonical header overrides applied AFTER unit-strip + aliasing.
   column_rename: {}
   station_rename: {}
-  # WD is numeric degrees here -> converted to wd_sin/wd_cos by the loader.
+  # AT->Temp, Ozone->O3, NOx->NOX via the alias map; numeric WD -> wd_sin/wd_cos.
   measurement_cols:
-    [PM2.5, PM10, NO, NO2, NOX, NH3, SO2, CO, O3, Temp, RH, WS, wd_sin, wd_cos]
-  # Natural missingness is intermediate (a few % to ~15% per variable); add any
-  # variable exceeding the >75% rule here after checking the cleaning report.
-  exclude_features: []
+    [PM2.5, PM10, "NO", NO2, NOX, NH3, SO2, CO, O3, Benzene,
+     Temp, BP, SR, RH, WS, wd_sin, wd_cos]
+  exclude_features: []       # published data is complete (no >75% columns)
 
 clean:
-  bounds:                    # CPCB Delhi units: PM/gases ug/m3, CO mg/m3
-    PM2.5:  [0, 1000]        # ug/m3
+  bounds:                    # verified against the published value ranges
+    PM2.5:  [0, 1000]        # ug/m3 (capped at 1000 in source)
     PM10:   [0, 2000]        # ug/m3
-    NO:     [0, 500]         # ug/m3
+    NO:     [0, 700]         # ug/m3
     NO2:    [0, 500]         # ug/m3
-    NOX:    [0, 700]         # ppb/ug/m3
+    NOX:    [0, 700]         # ppb
     NH3:    [0, 1000]        # ug/m3
     SO2:    [0, 500]         # ug/m3
-    CO:     [0, 50]          # mg/m3 (CPCB reports CO in mg/m3)
+    CO:     [0, 50]          # mg/m3 (source max ~10)
     O3:     [0, 1000]        # ug/m3
-    Temp:   [-5, 52]         # degC (Delhi record range with margin)
+    Benzene: [0, 200]        # ug/m3
+    Temp:   [-5, 52]         # degC (AT)
+    BP:     [870, 1085]      # hPa
+    SR:     [0, 1500]        # W/m2
     RH:     [0, 100]         # %
-    WS:     [0, 30]          # m/s
+    WS:     [0, 50]          # m/s
     wd_sin: [-1, 1]
     wd_cos: [-1, 1]
   stuck_run_length: 24
-  sentinel_values: {}        # CPCB "None"/blank coerce to NaN; add codes if found
+  sentinel_values: {}        # no sentinel codes in this packaging
 
 splits:                      # chronological (data 2018-06-01 .. 2019-10-01)
   train_end: "2019-04-30 23:00:00"   # 2018-06-01 .. 2019-04-30 (~11 months)
@@ -177,6 +175,6 @@ evaluation:
     10: Post-monsoon
     11: Post-monsoon
   season_order: [Winter, Summer, Monsoon, Post-monsoon]
-  # Filled automatically (first stations, test window) until the real station
-  # names are known; replace with [station, start, end] picks after first run.
-  example_picks: []
+  example_picks:
+    - [AshokVihar, "2019-07-01", "2019-08-01"]
+    - [Okhla, "2019-08-15", "2019-09-15"]
