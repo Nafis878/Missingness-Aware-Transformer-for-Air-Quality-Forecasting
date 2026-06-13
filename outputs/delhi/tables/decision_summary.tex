@@ -1,0 +1,19 @@
+\begin{table}
+\caption{Decision rule: effective input missingness at which end-to-end forecasting overtakes impute-then-forecast, per mechanism and horizon.}
+\label{tab:decision}
+\begin{tabular}{llll}
+\toprule
+ &  & crossover\_missing\_pct & recommendation \\
+mode & horizon &  &  \\
+\midrule
+\multirow[t]{3}{*}{miss} & 6 & >max & impute-then-forecast at all tested severities \\
+ & 24 & >max & impute-then-forecast at all tested severities \\
+ & 72 & 21.4 & end-to-end above \textasciitilde 21.4\% input missingness \\
+\cline{1-4}
+\multirow[t]{3}{*}{out} & 6 & >max & impute-then-forecast at all tested severities \\
+ & 24 & >max & impute-then-forecast at all tested severities \\
+ & 72 & 8.5 & end-to-end above \textasciitilde 8.5\% input missingness \\
+\cline{1-4}
+\bottomrule
+\end{tabular}
+\end{table}

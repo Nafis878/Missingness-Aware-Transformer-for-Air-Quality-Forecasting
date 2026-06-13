@@ -1,0 +1,85 @@
+{
+  "name": "proposed_md",
+  "seed": 44,
+  "checkpoint": "/content/Missingness-Aware-Transformer-for-Air-Quality-Forecasting/outputs/delhi/checkpoints/proposed_md_seed44.pt",
+  "best_val_loss": 0.7094034233353804,
+  "best_epoch": 6,
+  "epochs_run": 14,
+  "train_time_s": 13.8,
+  "n_parameters": 405906,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.8740188329914568,
+      "val": 0.7812301739453708
+    },
+    {
+      "epoch": 1,
+      "train": 0.6188954603279254,
+      "val": 0.7765231276254748
+    },
+    {
+      "epoch": 2,
+      "train": 0.5729276388530775,
+      "val": 0.7532939123366164
+    },
+    {
+      "epoch": 3,
+      "train": 0.5455845537292449,
+      "val": 0.7349498087204238
+    },
+    {
+      "epoch": 4,
+      "train": 0.5344535730276514,
+      "val": 0.7419547323511279
+    },
+    {
+      "epoch": 5,
+      "train": 0.5144651263097846,
+      "val": 0.721508456944184
+    },
+    {
+      "epoch": 6,
+      "train": 0.4981310279490757,
+      "val": 0.7094034233353804
+    },
+    {
+      "epoch": 7,
+      "train": 0.4660780670503087,
+      "val": 0.7440068375036731
+    },
+    {
+      "epoch": 8,
+      "train": 0.46191006875670665,
+      "val": 0.7188270664192628
+    },
+    {
+      "epoch": 9,
+      "train": 0.4509528155555366,
+      "val": 0.7429002214870641
+    },
+    {
+      "epoch": 10,
+      "train": 0.43043531130628976,
+      "val": 0.7244306229163721
+    },
+    {
+      "epoch": 11,
+      "train": 0.41317803342388965,
+      "val": 0.7565060754570262
+    },
+    {
+      "epoch": 12,
+      "train": 0.3946599843251758,
+      "val": 0.7484908940878556
+    },
+    {
+      "epoch": 13,
+      "train": 0.38597223432746564,
+      "val": 0.7336035947500957
+    }
+  ],
+  "latency_ms_per_window": 0.15064397777795996,
+  "attention_variant": "A",
+  "miss_dropout": true
+}

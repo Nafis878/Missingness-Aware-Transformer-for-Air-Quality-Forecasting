@@ -1,0 +1,14 @@
+\begin{table}
+\caption{Decision by measured imputability: per network, series imputability (1 $-$ SAITS/ffill reconstruction RMSE on held-out observed cells) and the end-to-end advantage at 6\,h under +50\% station-outage corruption (\si{\micro\gram\per\cubic\metre}; $>0$ favours end-to-end).}
+\label{tab:decision_imputability}
+\begin{tabular}{lrrrrrrrl}
+\toprule
+ & natural\_PM25\_missing\_pct & rmse\_model & rmse\_ffill & imputability & n\_cells & adv\_h6\_out50 & eff\_missing\_pct & recommendation \\
+dataset &  &  &  &  &  &  &  &  \\
+\midrule
+Dhaka & 23.7 & 1.3613 & 0.9789 & -0.3906 & 265010 & 1.69 & 66.5 & end-to-end \\
+Delhi & 0.0 & 0.3955 & 0.364 & -0.0864 & 45232 & -2.6 & 50.5 & impute-then-forecast \\
+Beijing & 2.1 & 0.4561 & 0.572 & 0.2026 & 265289 & -4.29 & 51.6 & impute-then-forecast \\
+\bottomrule
+\end{tabular}
+\end{table}

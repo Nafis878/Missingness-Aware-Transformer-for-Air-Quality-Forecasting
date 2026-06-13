@@ -1,0 +1,10 @@
+{
+  "name": "saits_imputer",
+  "seed": 44,
+  "checkpoint": "/content/Missingness-Aware-Transformer-for-Air-Quality-Forecasting/outputs/delhi/checkpoints/saits_imputer_seed44.pt",
+  "fit_time_s": 4.0,
+  "best_epoch": 29,
+  "best_val_mit_mae": 0.2698,
+  "ffill_val_mit_mae": 0.2293,
+  "n_parameters": 73940
+}

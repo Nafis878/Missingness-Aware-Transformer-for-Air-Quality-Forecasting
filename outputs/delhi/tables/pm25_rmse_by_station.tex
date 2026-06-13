@@ -1,0 +1,16 @@
+\begin{table}
+\caption{PM2.5 RMSE at 24 h per station (canonical seed).}
+\label{tab:station_rmse}
+\begin{tabular}{lrrrrrrrrrrr}
+\toprule
+ & DLinear & GRU-D & GRU & PatchTST & Persistence & Proposed + miss-dropout & Proposed (MAT) & Seasonal-naive & Two-stage (KNN) & Two-stage (SAITS) & Proposed (variant B) \\
+\midrule
+AshokVihar & 30.6 & 28.1 & 32.7 & 35.2 & 30.2 & 30.4 & 32.7 & 30.2 & 41.1 & 35.1 & 32.7 \\
+DCStadium & 21.0 & 23.4 & 22.3 & 32.8 & 20.7 & 21.6 & 20.4 & 20.7 & 25.6 & 33.4 & 20.4 \\
+DwarkaSec8 & 27.7 & 41.4 & 31.1 & 30.3 & 23.8 & 31.4 & 30.4 & 23.8 & 39.5 & 41.1 & 30.4 \\
+Najafgarh & 19.0 & 29.4 & 26.8 & 32.5 & 19.8 & 28.5 & 21.5 & 19.8 & 21.4 & 27.7 & 21.5 \\
+NehruNagar & 25.1 & 27.6 & 30.4 & 30.6 & 26.4 & 26.5 & 31.7 & 26.4 & 39.0 & 31.5 & 31.7 \\
+Okhla & 31.7 & 27.7 & 30.0 & 29.5 & 30.5 & 29.1 & 35.2 & 30.5 & 29.6 & 31.5 & 35.2 \\
+\bottomrule
+\end{tabular}
+\end{table}

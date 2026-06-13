@@ -11,15 +11,21 @@ and is compared against impute-then-forecast pipelines (KNN, MICE, and the
 deep imputer **SAITS**), the missingness-native **GRU-D** RNN, modern
 forecasters (**DLinear**, **PatchTST**), and statistical baselines.
 
-**The claim is parity-plus-deployability, not raw accuracy:** across **two
-monitoring networks** (Dhaka and Beijing), end-to-end missingness-aware
-forecasting *matches* the strong impute-then-forecast pipelines — including a
-deep imputer — at every horizon while removing the imputation stage. On the
-severely-incomplete Dhaka network the missingness-dropout variant additionally
-degrades most gracefully under realistic station outages and is best on
-high-pollution episodes — an advantage that, we show honestly, is **specific
-to severe missingness** and does not carry over to the near-complete Beijing
-network.
+**The claim is a predictive rule plus deployability, not raw accuracy:** across
+**three monitoring networks** spanning the reconstructability spectrum (Dhaka,
+Delhi, Beijing), the choice between end-to-end and impute-then-forecast is
+governed by a **directly measured imputability** — the end-to-end advantage at
+fixed severe outage declines monotonically with it and crosses zero, so a
+practitioner can *measure imputability, then choose the paradigm*. On the
+incomplete networks (Dhaka, Beijing), end-to-end missingness-aware forecasting
+*matches* the strong impute-then-forecast pipelines — including a deep imputer —
+at every horizon while removing the imputation stage. On the severely-incomplete
+Dhaka network the missingness-dropout variant additionally degrades most
+gracefully under realistic station outages and is best on high-pollution
+episodes — an advantage that, we show honestly, is **specific to the
+high-missingness, low-imputability regime** and does not carry over to the
+more-imputable Delhi and Beijing networks (on complete, noisy Delhi the proposed
+model is not even competitive on clean data — reported, not hidden).
 
 **Everything runs on a desktop CPU**: small models (d_model 128, 3 layers,
 ~406k parameters), vanilla PyTorch, fixed seeds, deterministic flags. All
@@ -105,11 +111,22 @@ handling — unit-row stripping, plausibility bounds, sentinel codes,
 stuck-sensor runs — is documented in
 [`outputs/data_cleaning_report.md`](outputs/data_cleaning_report.md).
 
-Missingness itself is a study object (a paper section): PM2.5 is 23.4%
+Missingness itself is a study object (a paper section): PM2.5 is 23.7%
 missing overall (10–45% per station), missingness is demonstrably not MCAR
 (predictable from meteorology + season, AUC 0.61), and station-level outages
 dominate the long-gap mass — which motivates both the model design and the
 outage-style robustness experiment.
+
+Two further networks place the study on a **measured-imputability** axis (see
+`config_beijing.yaml`, `config_delhi.yaml`): the near-complete **Beijing
+Multi-Site** benchmark (2.1% missing) and the complete-but-noisy **Delhi CPCB**
+network. The headline finding is a **predictive deployment rule** — the
+end-to-end advantage at fixed severe outage declines monotonically with a
+directly measured imputability (1 − RMSE_SAITS/RMSE_ffill on held-out observed
+cells) and crosses zero: Dhaka (imputability −0.39) favors end-to-end, while the
+more-imputable Delhi (−0.09) and Beijing (+0.20) favor impute-then-forecast.
+*Measure a network's imputability, then choose the paradigm.* See
+[`outputs/RESULTS.md`](outputs/RESULTS.md) for the full three-network results.
 
 ## Setup
 

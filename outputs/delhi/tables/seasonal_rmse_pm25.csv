@@ -1,0 +1,5 @@
+,DLinear,GRU-D,GRU,PatchTST,Persistence,Proposed + miss-dropout,Proposed (MAT),Seasonal-naive,Two-stage (KNN),Two-stage (SAITS),Proposed (variant B)
+Winter,,,,,,,,,,,
+Summer,,,,,,,,,,,
+Monsoon,26.3,30.1,29.1,31.9,25.6,28.1,29.2,25.6,33.5,33.6,29.2
+Post-monsoon,,,,,,,,,,,

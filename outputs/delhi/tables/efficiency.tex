@@ -1,0 +1,21 @@
+\begin{table}
+\caption{CPU efficiency: parameters, wall-clock training time, and single-window inference latency on a desktop CPU.}
+\label{tab:efficiency}
+\begin{tabular}{llllll}
+\toprule
+ & Parameters & Train time (min) & Impute time (min) & Latency (ms/window) & Epochs \\
+\midrule
+DLinear & 9198.00 & 0.10 & 0.00 & 0.09 & 16.00 \\
+GRU-D & 70708.00 & 2.40 & 0.00 & 1.17 & 23.00 \\
+GRU & 204306.00 & 0.20 & 0.00 & 0.25 & 17.00 \\
+PatchTST & 409746.00 & 0.20 & 0.00 & 0.19 & 11.00 \\
+Persistence & 0 & 0.00 & 0.00 & 0.03 & - \\
+Proposed + miss-dropout & 405906.00 & 0.30 & 0.00 & 0.15 & 17.00 \\
+Proposed (MAT) & 405906.00 & 0.10 & 0.00 & 0.15 & 10.00 \\
+Seasonal-naive & 0 & 0.00 & 0.00 & 0.01 & - \\
+Two-stage (KNN) & 403730.00 & 0.10 & 0.00 & 0.15 & 10.00 \\
+Two-stage (SAITS) & 403730.00 & 0.20 & 0.10 & 0.14 & 14.00 \\
+Proposed (variant B) & 405906.00 & 0.10 & 0.00 & 0.16 & 10.00 \\
+\bottomrule
+\end{tabular}
+\end{table}

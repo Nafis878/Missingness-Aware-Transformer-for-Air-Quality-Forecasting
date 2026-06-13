@@ -1,0 +1,14 @@
+\begin{table}
+\caption{PM2.5 RMSE at 24 h per season.}
+\label{tab:seasonal}
+\begin{tabular}{lrrrrrrrrrrr}
+\toprule
+ & DLinear & GRU-D & GRU & PatchTST & Persistence & Proposed + miss-dropout & Proposed (MAT) & Seasonal-naive & Two-stage (KNN) & Two-stage (SAITS) & Proposed (variant B) \\
+\midrule
+Winter & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN \\
+Summer & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN \\
+Monsoon & 26.3 & 30.1 & 29.1 & 31.9 & 25.6 & 28.1 & 29.2 & 25.6 & 33.5 & 33.6 & 29.2 \\
+Post-monsoon & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN & NaN \\
+\bottomrule
+\end{tabular}
+\end{table}

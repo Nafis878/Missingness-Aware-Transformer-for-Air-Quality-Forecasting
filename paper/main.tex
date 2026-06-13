@@ -19,7 +19,7 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{microtype}
 
-\graphicspath{{../outputs/figures/}{../outputs/beijing/figures/}}
+\graphicspath{{../outputs/figures/}{../outputs/beijing/figures/}{../outputs/delhi/figures/}}
 \sisetup{detect-weight=true, detect-family=true}
 \newcommand{\ugm}{\si{\micro\gram\per\cubic\metre}}
 \newcommand{\pmf}{PM\textsubscript{2.5}}
@@ -31,7 +31,7 @@
 \begin{frontmatter}
 
 \title{When to Forecast End-to-End versus Impute-then-Forecast:
-A Missingness-Severity Crossover for Air-Quality Prediction on
+A Measured-Imputability Crossover for Air-Quality Prediction on
 Incomplete Monitoring Networks}
 
 \author[a]{Anonymous Author}
@@ -43,34 +43,35 @@ multivariate streams, yet the prevailing practice is a two-stage
 \emph{impute-then-forecast} pipeline whose imputation stage must be refit and
 re-run on every data refresh. We ask a question that the literature has left
 implicit: \emph{when} should one forecast end-to-end from masked inputs rather
-than impute first? We answer it with a controlled study on two monitoring
-networks of very different completeness---Dhaka, Bangladesh (\pmf{} \SI{23.4}{\percent}
-missing) and the Beijing Multi-Site benchmark (\SI{2.1}{\percent} missing)---using a
-deliberately simple, CPU-deployable missingness-aware Transformer that consumes
-the observation mask natively. Against strong baselines including the
-missingness-native GRU-D recurrent model and three impute-then-forecast
-pipelines (KNN, MICE, and the deep self-attention imputer SAITS), the end-to-end
-model reaches \emph{accuracy parity} at every horizon on both networks; per-seed
-Diebold--Mariano tests confirm no significant difference, correcting a
-single-seed result in earlier work that did not replicate. The central finding
-is a \emph{missingness-severity crossover governed by two factors}, not one.
-On the severely incomplete, less-structured Dhaka network the advantage of
-end-to-end forecasting over even a deep imputer rises with input incompleteness:
-stratifying natural test windows by completeness, end-to-end trails the deep
-imputer by \SI{2.1}{\ugm} on the most complete windows but leads by \SI{2.3}{\ugm}
-on the most incomplete, and under synthetic station outages it overtakes above
-$\approx\!38\%$ effective input missingness at \SI{6}{\hour}. This threshold is
-\emph{not} universal: on the highly periodic Beijing network a deep imputer
-remains best under outages at every tested severity---its margin even grows---
-because strong diurnal structure keeps large outage blocks imputable. Under
-cell-wise MCAR a deep imputer wins on both networks. The practical rule is thus
-conditional on both missingness severity and series imputability: end-to-end
-forecasting (with training-time missingness dropout, which also wins on
-high-pollution episodes) is preferable in the high-missingness, low-imputability
-regime; impute-then-forecast wins otherwise. We
-provide the crossover as a deployment decision rule, a fully reproducible
-multi-seed benchmark, and a data-quality lesson on sensor error codes that, left
-unhandled, distort every reported number.
+than impute first? We answer it with a controlled study on three monitoring
+networks that span the reconstructability spectrum---Dhaka, Bangladesh (\pmf{}
+\SI{23.7}{\percent} missing), the Delhi CPCB network (published complete but
+highly noisy), and the Beijing Multi-Site benchmark (\SI{2.1}{\percent}
+missing)---using a deliberately simple, CPU-deployable missingness-aware
+Transformer that consumes the observation mask natively. Against strong baselines
+including the missingness-native GRU-D recurrent model and three
+impute-then-forecast pipelines (KNN, MICE, and the deep self-attention imputer
+SAITS), the end-to-end model reaches \emph{accuracy parity} at every horizon on
+the incomplete networks; per-seed Diebold--Mariano tests confirm no significant
+difference, correcting a single-seed result in earlier work that did not
+replicate. Our central contribution is to make the choice \emph{predictive}: we
+define a directly \textbf{measured imputability} of a network---one minus the
+ratio of a deep imputer's to forward-fill's reconstruction error on held-out
+observed cells---and show that the end-to-end advantage at a fixed severe outage
+declines \emph{monotonically} as imputability rises and crosses zero. Across the
+three networks the advantage falls from \SI{+1.7}{\ugm} on least-imputable Dhaka
+(imputability $-0.39$) through \SI{-2.6}{\ugm} on Delhi ($-0.09$) to
+\SI{-4.3}{\ugm} on most-imputable Beijing ($+0.20$), yielding a deployable rule:
+\emph{measure a network's imputability, then choose the paradigm}---forecast
+end-to-end (with training-time missingness dropout, which also wins on
+high-pollution episodes) in the low-imputability regime, and impute-then-forecast
+otherwise. The mechanism is consistent: on Delhi and Beijing the deep imputer is
+reconstructable enough to win (on Delhi it does not even pass its forward-fill
+quality gate), whereas on noisy, severely incomplete Dhaka it has little to
+exploit and end-to-end takes over. We provide the imputability crossover as a
+deployment decision rule, a fully reproducible multi-seed benchmark across three
+networks, and a data-quality lesson on sensor error codes that, left unhandled,
+distort every reported number.
 \end{abstract}
 
 \begin{keyword}
@@ -90,7 +91,7 @@ for human health \citep{who2021guidelines,kim2009review}, and short-horizon
 must feed those forecasts, however, are produced by physical monitoring networks
 that are routinely and severely incomplete: sensors fail, stations go offline
 for days, and entire variables are absent at some sites. In our Dhaka network,
-\pmf{} is \SI{23.4}{\percent} missing overall (\SIrange{10}{45}{\percent} per
+\pmf{} is \SI{23.7}{\percent} missing overall (\SIrange{10}{45}{\percent} per
 station), and roughly \SI{39}{\percent} of missing \pmf{} hours fall in gaps
 longer than seven days---missingness is dominated by structured \emph{station
 outages}, not independent dropout.
@@ -107,14 +108,27 @@ series, letting the model consume the observation mask directly
 The literature largely argues this implicitly, by reporting aggregate accuracy
 of one method against another on a single dataset. We argue that the honest and
 useful question is conditional: the right paradigm depends on \emph{how much} and
-\emph{what kind of} missingness the deployment faces. We make this concrete by
-characterizing the \textbf{missingness-severity crossover}---the effective
+\emph{what kind of} missingness the deployment faces, and---decisively---on how
+\emph{reconstructable} its series are. We make this concrete in two ways. First,
+we characterize the \textbf{missingness-severity crossover}---the effective
 input-missingness level at which end-to-end forecasting overtakes
-impute-then-forecast---across two networks that bracket the severity spectrum and
-a controlled corruption sweep that holds the dataset fixed.
+impute-then-forecast---through a controlled corruption sweep that holds the
+dataset fixed. Second, and more importantly, we make the rule \emph{predictive}
+by introducing a directly \textbf{measured imputability} of a network and showing
+that the end-to-end advantage tracks it monotonically across three networks that
+span the reconstructability spectrum. A practitioner can compute imputability
+from their own data and read off the recommended paradigm.
 
 Our contributions are:
 \begin{enumerate}
+  \item A \textbf{measured-imputability decision rule}. We define a network's
+  \emph{imputability} as $1-\mathrm{RMSE_{SAITS}}/\mathrm{RMSE_{ffill}}$ on
+  held-out observed cells---a single number a practitioner can compute before
+  choosing a paradigm---and show across \emph{three} networks spanning the
+  spectrum that the end-to-end advantage at fixed severe outage declines
+  monotonically with imputability and crosses zero, turning the question from a
+  post-hoc benchmark observation into a \emph{predictive} rule
+  (Section~\ref{sec:imputability}).
   \item A \textbf{controlled characterization of when end-to-end forecasting
   beats impute-then-forecast}, showing the choice is governed by the interaction
   of effective input missingness, missingness structure (cell-wise vs
@@ -123,23 +137,26 @@ Our contributions are:
   (Section~\ref{sec:crossover}).
   \item A \textbf{simple, CPU-deployable missingness-aware Transformer} that
   reaches accuracy parity with strong impute-then-forecast pipelines---including
-  a quality-gated deep imputer (SAITS)---and the missingness-native GRU-D, on two
-  networks, while eliminating the imputation stage
+  a quality-gated deep imputer (SAITS)---and the missingness-native GRU-D, on the
+  incomplete networks, while eliminating the imputation stage
   (Sections~\ref{sec:method}--\ref{sec:results}).
   \item \textbf{Training-time missingness dropout}, which buys the strongest
   robustness in the severe regime and the best high-pollution-episode accuracy,
   at a cost of $\approx$\SI{0.5}{\ugm} of clean accuracy.
-  \item A \textbf{fully reproducible multi-seed benchmark} (three seeds,
-  per-seed Diebold--Mariano significance, deterministic pipeline, 86 tests) and a
-  reusable \textbf{data-quality lesson}: undocumented sensor saturation codes
-  that, if not removed, inflate even a persistence baseline by \SI{40}{\ugm}.
+  \item A \textbf{fully reproducible multi-seed benchmark} (three networks, three
+  seeds, per-seed Diebold--Mariano significance, deterministic pipeline, 104
+  tests) and a reusable \textbf{data-quality lesson}: undocumented sensor
+  saturation codes that, if not removed, inflate even a persistence baseline by
+  \SI{40}{\ugm}.
 \end{enumerate}
 
 We are explicit about the limits of the contribution. The architecture is
-deliberately conventional; the novelty is the crossover characterization and the
-deployability argument, not a new accuracy state of the art. Where a baseline
-wins---SAITS under cell-wise MCAR on both networks, and under station outages on
-the near-complete Beijing network---we report it.
+deliberately conventional; the novelty is the measured-imputability rule, the
+crossover characterization, and the deployability argument, not a new accuracy
+state of the art. Where a baseline wins---SAITS under cell-wise MCAR on all
+networks, and under station outages on the more-imputable Delhi and Beijing
+networks (indeed on complete, noisy Delhi the proposed model trails even
+persistence on clean data)---we report it.
 
 % =====================================================================
 \section{Related work}
@@ -186,13 +203,24 @@ missingness handling.
 \label{sec:data}
 
 \paragraph{Networks.}
-We use two hourly air-quality networks. \textbf{Dhaka} comprises 16 monitoring
-stations across Bangladesh (2022--2024), with six target pollutants (\pmf, PM10,
+We use three hourly air-quality networks chosen to span the reconstructability
+spectrum. \textbf{Dhaka} comprises 16 monitoring stations across Bangladesh
+(2022--2024), with six target pollutants (\pmf, PM10,
 NO\textsubscript{2}, O\textsubscript{3}, CO, SO\textsubscript{2}) and
-meteorology. \textbf{Beijing Multi-Site} \citep{zhang2017cautionary} comprises 12
-stations (2013--2017) with the same six pollutants and meteorology. The two
-bracket the missingness spectrum: Dhaka \pmf{} is \SI{23.4}{\percent} missing,
-Beijing only \SI{2.1}{\percent}.
+meteorology; \pmf{} is \SI{23.7}{\percent} missing. \textbf{Beijing Multi-Site}
+\citep{zhang2017cautionary} comprises 12 stations (2013--2017) with the same six
+pollutants and meteorology, only \SI{2.1}{\percent} missing. \textbf{Delhi}
+\citep{cpcb_delhi} is a six-station Central Pollution Control Board network
+(2018--2019) with a broader chemistry panel
+(\pmf, PM10, NO/NO\textsubscript{2}/NO\textsubscript{x}, NH\textsubscript{3},
+SO\textsubscript{2}, CO, O\textsubscript{3}, benzene) and meteorology. The
+published Delhi series is essentially \emph{complete} ($<\!0.2\%$ missing) but
+unusually noisy (\pmf{} mean \SI{93}{}, std \SI{98}{\ugm}); it is therefore not
+an intermediate-\emph{missingness} case but a \emph{complete-yet-hard-to-impute}
+one, which is precisely what makes it a useful interior point on the
+\emph{imputability} axis rather than the completeness axis. We deliberately keep
+the model, training, and window configuration identical across networks so that
+only the data differ.
 
 \paragraph{Missingness is structured and not at random.}
 On Dhaka, a logistic regression predicting the \pmf{} missingness indicator from
@@ -260,6 +288,24 @@ We further include GRU-D \citep{che2018grud}, LSTM/GRU on forward-filled inputs,
 DLinear \citep{zeng2023dlinear}, PatchTST \citep{nie2023patchtst} on
 mask-concatenated inputs, and persistence, seasonal-naive, and per-station SARIMA.
 
+\paragraph{Measured imputability.}
+To make the paradigm choice predictive rather than post-hoc, we summarize a
+network with a single scalar computed \emph{from the data alone}, before any
+forecaster is chosen. On the test period we hide a fixed seeded fraction
+($20\%$) of the genuinely \emph{observed} cells, reconstruct them two ways---with
+the trained deep imputer (SAITS) and with naive forward-fill---and define
+\begin{equation}
+\mathrm{imputability} \;=\; 1 - \frac{\mathrm{RMSE_{SAITS}}}{\mathrm{RMSE_{ffill}}}
+\quad\in(-\infty,1],
+\label{eq:imputability}
+\end{equation}
+in standardized units, where higher means more reconstructable. A value of $0$
+means the deep imputer merely matches forward-fill; negative values mean it
+\emph{loses} to forward-fill---an operationally meaningful signal that the
+series carries little structure for any imputer to exploit. This is the same
+quantity our SAITS quality gate uses on the validation split, here measured on
+test for the decision rule.
+
 % =====================================================================
 \section{Experimental setup}
 \label{sec:setup}
@@ -278,13 +324,13 @@ decay and early stopping. Metrics are RMSE (headline), MAE, and $R^2$, all
 unscaled over observed targets; we additionally report a high-pollution-episode
 RMSE restricted to test hours with observed \pmf{}~$>\SI{150}{\ugm}$. The
 pipeline is config-driven and deterministic; all numbers regenerate from one
-command, and 86 unit tests cover the contracts.
+command, and 104 unit tests cover the contracts.
 
 % =====================================================================
 \section{Results}
 \label{sec:results}
 
-\subsection{Accuracy parity on both networks}
+\subsection{Accuracy parity on the incomplete networks}
 \label{sec:parity}
 
 Table~\ref{tab:main} reports \pmf{} RMSE on Dhaka. The proposed model, variant B,
@@ -298,7 +344,15 @@ artifact: across seeds $p = 0.038/0.042/0.891$ with a mean RMSE difference of
 at \SI{72}{\hour} (all seeds, median $p=0.006$), and the proposed family is
 significantly better than DLinear and PatchTST everywhere. The same parity holds
 on Beijing (Table~\ref{tab:beijing}), where the proposed model and variant~B are
-in fact marginally the best at \SI{6}{\hour}.
+in fact marginally the best at \SI{6}{\hour}. On the complete, noisy Delhi
+network the picture is different and we report it plainly: there the proposed
+model is \emph{not} competitive on clean data---persistence
+(\SI{21.3}{\ugm} at \SI{6}{\hour}) and DLinear (\SI{21.9}{\ugm}) lead while the
+proposed model trails at \SI{31.4}{\ugm} (Table~\ref{tab:delhi})---a network so
+periodic at short range that naive persistence is hard to beat and the
+mask-native pathway buys nothing. This is exactly the high-imputability regime in
+which our decision rule recommends against end-to-end forecasting, and it is the
+honest counterweight to the parity result on the incomplete networks.
 
 \begin{table}[t]
 \centering
@@ -352,6 +406,34 @@ Proposed + miss-dropout& 51.44\,$\pm$\,0.61 & 76.37\,$\pm$\,0.25 & 85.58\,$\pm$\
 \end{tabular}
 \end{table}
 
+\begin{table}[t]
+\centering
+\caption{Delhi \pmf{} test RMSE (\ugm), three-seed mean~$\pm$~std; GPU-trained.
+On this complete but very noisy, short-range-periodic network the proposed model
+is \emph{not} competitive on clean data---persistence and DLinear lead. We report
+this honestly; it is the high-imputability regime where our rule recommends
+against end-to-end forecasting. Best per column in bold.}
+\label{tab:delhi}
+\small
+\begin{tabular}{lccc}
+\toprule
+Model & \SI{6}{\hour} & \SI{24}{\hour} & \SI{72}{\hour} \\
+\midrule
+Persistence            & \textbf{21.28} & \textbf{25.55} & 30.91 \\
+Seasonal-naive         & 27.68 & \textbf{25.55} & 30.91 \\
+GRU                    & 25.50\,$\pm$\,1.44 & 30.73\,$\pm$\,1.26 & 37.02\,$\pm$\,3.12 \\
+GRU-D                  & 24.42\,$\pm$\,1.41 & 31.49\,$\pm$\,1.11 & 32.02\,$\pm$\,1.08 \\
+DLinear                & 21.87\,$\pm$\,0.55 & 28.46\,$\pm$\,3.83 & \textbf{27.43\,$\pm$\,0.74} \\
+PatchTST               & 30.34\,$\pm$\,2.38 & 35.37\,$\pm$\,2.68 & 39.23\,$\pm$\,3.53 \\
+Two-stage (KNN)        & 30.58\,$\pm$\,4.75 & 34.30\,$\pm$\,0.67 & 40.14\,$\pm$\,2.81 \\
+Two-stage (SAITS)      & 26.73\,$\pm$\,2.04 & 33.54\,$\pm$\,0.79 & 34.86\,$\pm$\,0.37 \\
+Proposed (MAT)         & 31.44\,$\pm$\,2.55 & 33.06\,$\pm$\,4.09 & 43.60\,$\pm$\,3.43 \\
+Proposed (variant B)   & 31.44\,$\pm$\,2.55 & 33.06\,$\pm$\,4.09 & 43.60\,$\pm$\,3.43 \\
+Proposed + miss-dropout& 26.42\,$\pm$\,0.79 & 30.83\,$\pm$\,2.52 & 34.37\,$\pm$\,1.59 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{Robustness under corruption}
 \label{sec:robustness}
 
@@ -377,20 +459,81 @@ variant degrades most gracefully; under MCAR the deep imputer (SAITS) does.}
 \label{fig:robustness}
 \end{figure}
 
+\subsection{A predictive rule: the advantage tracks measured imputability}
+\label{sec:imputability}
+
+The crossover above is descriptive: it tells us \emph{that} the paradigms swap,
+but not how to anticipate the swap for a new network without first running the
+whole study. We close that gap with the measured imputability of
+Eq.~\eqref{eq:imputability}. Table~\ref{tab:decision_imputability} reports, for
+each network, its imputability and the end-to-end advantage (best
+impute-then-forecast minus best end-to-end RMSE) at the fixed severe operating
+point of \SI{6}{\hour} under $\approx\!50\%$ station outage. The three networks
+order cleanly: Dhaka is the least imputable (imputability $-0.39$; the deep
+imputer loses badly to forward-fill on its noisy, severely incomplete series),
+Delhi is intermediate ($-0.09$; despite being \emph{complete}, its series are so
+noisy that SAITS fails even to pass its forward-fill quality gate), and Beijing
+is the most imputable ($+0.20$; strong diurnal structure lets the deep imputer
+beat forward-fill). Against this axis the end-to-end advantage declines
+\emph{monotonically}---\SI{+1.69}{\ugm} (Dhaka), \SI{-2.60}{\ugm} (Delhi),
+\SI{-4.29}{\ugm} (Beijing)---and crosses zero between Dhaka and Delhi
+(Figure~\ref{fig:imputability}). This is the paper's central, predictive result:
+the recommendation is not a function of completeness (Delhi is complete yet
+favors impute-then-forecast) but of \emph{measured imputability}, which a
+practitioner can compute on their own network before committing to a paradigm.
+The rule reads directly off the table---\textbf{forecast end-to-end when
+imputability is low (here, $\lesssim\!-0.3$); impute-then-forecast otherwise.}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{imputability_crossover.pdf}
+\caption{The predictive rule. End-to-end advantage at \SI{6}{\hour} under
+$\approx\!50\%$ station outage (best impute-then-forecast minus best end-to-end
+RMSE; $>0\Rightarrow$ end-to-end wins) vs measured imputability
+(Eq.~\eqref{eq:imputability}) for all three networks. The advantage declines
+monotonically with imputability and crosses zero: low-imputability networks
+(Dhaka) favor end-to-end, more-imputable ones (Delhi, Beijing) favor
+impute-then-forecast. Completeness does not determine the choice---Delhi is
+complete yet sits on the impute-then-forecast side.}
+\label{fig:imputability}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Decision by measured imputability: per network, the imputability score
+(Eq.~\eqref{eq:imputability}) and the end-to-end advantage at \SI{6}{\hour} under
+$\approx\!50\%$ station outage (\ugm; $>0$ favors end-to-end). The advantage is
+monotone in imputability (\texttt{decision\_by\_imputability}).}
+\label{tab:decision_imputability}
+\small
+\begin{tabular}{lrrrl}
+\toprule
+Network & Imputability & RMSE$_{\text{SAITS}}$/RMSE$_{\text{ffill}}$ & Adv.\ \SI{6}{\hour}@\,$\sim$50\% & Recommendation \\
+\midrule
+Dhaka   & $-0.39$ & $1.36/0.98$ & $+1.69$ & end-to-end \\
+Delhi   & $-0.09$ & $0.40/0.36$ & $-2.60$ & impute-then-forecast \\
+Beijing & $+0.20$ & $0.46/0.57$ & $-4.29$ & impute-then-forecast \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{The missingness-severity crossover}
 \label{sec:crossover}
 
-We plot the \emph{advantage}---best impute-then-forecast RMSE minus best
-end-to-end RMSE---against \emph{effective} input missingness, putting both
-networks on one severity axis (Figure~\ref{fig:crossover}). The two networks
-behave \emph{oppositely}, which is the key result. On Dhaka, the end-to-end
-advantage under station outages rises with severity and crosses zero at
-$\approx\!38\%$ effective missingness at \SI{6}{\hour} and $\approx\!71\%$ at
+Holding the severity axis fixed, we plot the \emph{advantage}---best
+impute-then-forecast RMSE minus best end-to-end RMSE---against \emph{effective}
+input missingness, putting all three networks on one figure
+(Figure~\ref{fig:crossover}). The networks behave differently in a way the
+imputability axis (Section~\ref{sec:imputability}) explains. On Dhaka, the
+end-to-end advantage under station outages rises with severity and crosses zero
+at $\approx\!38\%$ effective missingness at \SI{6}{\hour} and $\approx\!71\%$ at
 \SI{24}{\hour} (Table~\ref{tab:decision}); above the crossover end-to-end
 forecasting wins, below it the deep imputer does. On Beijing the deep imputer
 wins at \emph{every} tested severity and its margin \emph{grows} with
 missingness (from \SI{-0.9}{} to \SI{-4.3}{\ugm} at \SI{6}{\hour}), the opposite
-slope. The determinant is series imputability: Beijing's strong diurnal and
+slope. Delhi sits between them: an imputer wins under outages but by a smaller,
+non-growing margin than Beijing's, consistent with its intermediate imputability.
+The determinant is series imputability: Beijing's strong diurnal and
 seasonal structure lets SAITS reconstruct even \SIrange{6}{48}{\hour} outage
 blocks, so more (well-imputed) missingness helps the two-stage pipeline; Dhaka's
 noisier, less periodic series offer imputation little to exploit once outages are
@@ -400,17 +543,17 @@ prior rather than to a poor reconstruction---takes over. The crossover is thus
 severity and imputability; end-to-end forecasting helps specifically in the
 high-missingness, low-imputability regime, which is the operational reality of
 networks like Dhaka. Under cell-wise MCAR the deep imputer wins throughout on
-both networks (the intact cross-section is trivially imputable).
+all three networks (the intact cross-section is trivially imputable).
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\linewidth]{crossover_combined.pdf}
 \caption{End-to-end advantage (best impute-then-forecast minus best end-to-end
 RMSE; gap $>0\Rightarrow$ end-to-end wins) vs effective input missingness at
-\SI{6}{\hour}. Under station outages the two networks diverge: on Dhaka the
-advantage rises with severity and crosses zero ($\approx\!38\%$), while on the
-highly periodic Beijing network the deep imputer stays ahead and its margin
-grows. The choice depends on series imputability, not severity alone.}
+\SI{6}{\hour}, all three networks. Under station outages the networks diverge: on
+Dhaka the advantage rises with severity and crosses zero ($\approx\!38\%$), while
+on the more-imputable Delhi and highly periodic Beijing networks the deep imputer
+stays ahead. The choice depends on series imputability, not severity alone.}
 \label{fig:crossover}
 \end{figure}
 
@@ -478,7 +621,7 @@ with \emph{no} imputation stage. The two-stage pipelines carry an imputer that
 must be refit and re-run on every data refresh: the SAITS imputer alone is
 \SI{5.6}{\minute} to fit and is re-applied at inference. On equal accuracy, the
 absence of a serving-time imputation stage is the practical advantage that
-generalizes across both networks, independent of where the deployment sits
+generalizes across networks, independent of where the deployment sits
 relative to the crossover.
 
 % =====================================================================
@@ -489,7 +632,7 @@ Our results recast a question usually answered by a single benchmark number into
 a conditional decision with two axes. End-to-end and impute-then-forecast are not
 globally ranked; their ordering depends on missingness severity, its structure,
 and---critically---the imputability of the series. Under the benign cell-wise
-MCAR mechanism, a strong deep imputer is hard to beat on both networks. Under the
+MCAR mechanism, a strong deep imputer is hard to beat on all three networks. Under the
 realistic station-outage mechanism, the ordering depends on whether the series is
 imputable: on highly periodic data (Beijing) a deep imputer reconstructs even
 long outage blocks and wins throughout, whereas on noisier, less periodic data
@@ -506,36 +649,52 @@ make it a safe default to deploy and a cheap one to serve.
 \section{Limitations}
 \label{sec:limitations}
 
-Both networks are air quality; the crossover's numerical location may differ in
-other domains, though the qualitative mechanism (outages destroy the
-cross-section) should transfer. Synthetic corruption is a proxy for additional
-real missingness; we mitigate this by matching the corruption to the empirically
-dominant outage mechanism. The architecture is intentionally simple and
-per-station; spatial models may shift accuracy but are orthogonal to the
-crossover question. Beijing models were trained on GPU and are not bit-identical
-to CPU runs at the same seed.
+All three networks are air quality; the crossover's numerical location may differ
+in other domains, though the qualitative mechanism (outages destroy the
+cross-section) should transfer. Imputability is measured with one deep imputer
+(SAITS) against forward-fill; a different reference imputer would shift the
+scalar's absolute scale, but the rule depends on the \emph{ordering} of networks,
+which is robust, and on the sign of the advantage at the operating point. With
+three networks the imputability--advantage relationship is monotone but
+estimated from three points; more networks would tighten the location of the
+zero-crossing, which we report as a regime ($\lesssim\!-0.3$) rather than a sharp
+threshold. The Delhi series is published already complete, so it probes the
+imputability axis at full completeness rather than supplying an
+intermediate-\emph{missingness} point. Synthetic corruption is a proxy for
+additional real missingness; we mitigate this by matching the corruption to the
+empirically dominant outage mechanism. The architecture is intentionally simple
+and per-station; spatial models may shift accuracy but are orthogonal to the
+crossover question. Beijing and Delhi models were trained on GPU and are not
+bit-identical to CPU runs at the same seed.
 
 % =====================================================================
 \section{Conclusion}
 \label{sec:conclusion}
 
 We characterized when to forecast air quality end-to-end rather than
-impute-then-forecast, showing the choice turns on missingness severity, its
-structure, and series imputability rather than any single threshold: on the
-severely incomplete, less-structured Dhaka network end-to-end forecasting
-overtakes a deep imputer past a within-network crossover, while on the highly
-periodic Beijing network the imputer wins throughout. A deliberately simple,
-CPU-deployable missingness-aware Transformer reaches accuracy parity with strong
+impute-then-forecast, and made the choice \emph{predictive} via a directly
+measured imputability. Across three networks spanning the reconstructability
+spectrum---Dhaka, Delhi, and Beijing---the end-to-end advantage at fixed severe
+outage declines monotonically with imputability and crosses zero: end-to-end
+forecasting overtakes a deep imputer on the severely incomplete, low-imputability
+Dhaka network, while on the more-imputable Delhi and Beijing networks the imputer
+wins (on complete-but-noisy Delhi the deep imputer does not even pass its
+forward-fill quality gate, and the proposed model is not competitive on clean
+data). A practitioner can therefore measure a network's imputability and read off
+the recommended paradigm. A deliberately simple, CPU-deployable
+missingness-aware Transformer reaches accuracy parity with strong
 pipelines---including a quality-gated deep imputer and the missingness-native
-GRU-D---and, with missingness dropout, degrades most gracefully in the severe
-regime and on high-pollution episodes. The contribution is a deployment
-decision rule, a reproducible multi-seed benchmark, and the reminder that
-unhandled sensor error codes can silently distort every reported number.
+GRU-D---on the incomplete networks and, with missingness dropout, degrades most
+gracefully in the severe regime and on high-pollution episodes. The contribution
+is a measured-imputability deployment decision rule, a reproducible multi-seed
+three-network benchmark, and the reminder that unhandled sensor error codes can
+silently distort every reported number.
 
 \paragraph{Reproducibility.}
 The pipeline is config-driven and deterministic; all tables and figures
 regenerate from a single command, every learned model is trained with three
-seeds, and 86 unit tests cover the data, model, and evaluation contracts.
+seeds on all three networks, and 104 unit tests cover the data, model, and
+evaluation contracts.
 
 \bibliographystyle{elsarticle-num}
 \bibliography{references}

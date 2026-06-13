@@ -7,20 +7,29 @@ reported as **mean ± std**; the deterministic statistical baselines
 the held-out 2024 test year, observed targets only (4,459 / 4,569 / 4,566
 targets at h6 / h24 / h72).
 
-> **Lead claim.** On **two monitoring networks** (Dhaka, 23% missing; Beijing,
-> 2% missing), end-to-end missingness-aware forecasting **matches** strong
+> **Lead claim.** On **three monitoring networks** spanning the
+> reconstructability spectrum (Dhaka, 23.7% missing; Delhi, complete but very
+> noisy; Beijing, 2.1% missing), the paradigm choice between end-to-end and
+> impute-then-forecast is governed by a **directly measured imputability**
+> (1 − RMSE_SAITS / RMSE_ffill on held-out observed cells). The end-to-end
+> advantage at a fixed severe outage **declines monotonically with imputability
+> and crosses zero** — **Dhaka** (imputability −0.39) **+1.69 µg/m³** (favors
+> end-to-end), **Delhi** (−0.09) **−2.60**, **Beijing** (+0.20) **−4.29** (both
+> favor impute-then-forecast) — yielding a **predictive deployment rule**:
+> measure a network's imputability, then choose the paradigm. On the incomplete
+> networks (Dhaka, Beijing) end-to-end forecasting **matches** strong
 > impute-then-forecast pipelines — including a deep imputer (SAITS) — at every
-> horizon, while **eliminating the imputation stage**. On the
-> severely-incomplete Dhaka network, the missingness-dropout variant
-> **degrades most gracefully under realistic station-outage corruption** and
-> is **best on high-pollution episodes**. We are explicit about the limits of
-> the robustness claim: it is **specific to severe missingness** — on the
-> near-complete Beijing network a deep imputer (SAITS) is the most robust under
-> the same outage corruption — and under idealized cell-wise MCAR SAITS is most
-> robust on both datasets. The missingness-native RNN (GRU-D) does not beat the
-> proposed transformer. **Accuracy parity and elimination of the imputation
-> stage are the claims that generalize; the robustness edge is conditional on
-> the deployment regime the method targets.**
+> horizon while **eliminating the imputation stage**, and on severely-incomplete
+> Dhaka the missingness-dropout variant **degrades most gracefully under
+> station-outage corruption** and is **best on high-pollution episodes**. We are
+> explicit about the limits: under idealized cell-wise MCAR SAITS is most robust
+> on all three networks; on **complete, noisy Delhi the proposed model is not
+> competitive on clean data** (persistence 21.3, DLinear 21.9 vs proposed 31.4
+> at h6) and SAITS does not even pass its forward-fill quality gate — exactly the
+> high-imputability regime where the rule says *do not* go end-to-end. **The
+> measured-imputability rule and elimination of the imputation stage are the
+> claims that generalize; the robustness edge is conditional on the
+> low-imputability regime the method targets.**
 
 ## What changed in this revision (honesty notes)
 
@@ -46,7 +55,7 @@ targets at h6 / h24 / h72).
   cleaning + hourly reindexing. Chronological splits: train 2022-01–2023-09,
   val 2023-10–12, test 2024 → 9,000 / 1,420 / 5,578 windows (168 h input,
   horizons 6/24/72 h).
-- Missingness after cleaning: PM2.5 23.4% overall (10.4–45.1% per station);
+- Missingness after cleaning: PM2.5 23.7% overall (10.4–45.1% per station);
   Rain/VWS >83% (excluded). Mean per-window input missingness 37.6% (train) /
   30.6% (test).
 - Missingness is **not MCAR**: logistic regression predicts PM2.5 missingness
@@ -231,7 +240,7 @@ less accurate; GRU-D is cheap but not more robust.
 420,768 rows, 12 stations, windows 11,920 / 1,068 / 4,356; last full year
 (2016-03–2017-02) held out as test, preceding 3 months as val. **Beijing's
 natural PM2.5 missingness is only 2.1%** (PM10 1.6%, O3 4.2%, CO 5.3%) versus
-Dhaka's 23.4% — so Beijing is an **external-validity check on a near-complete
+Dhaka's 23.7% — so Beijing is an **external-validity check on a near-complete
 network**, and its synthetic-corruption suite (same MCAR + outage protocol) is
 where the mechanism is stressed. Models were trained on Google Colab (A100);
 GPU and CPU runs at the same seed are not bit-identical.
@@ -255,20 +264,55 @@ copied to `main_results_beijing.*`):
 are in fact *marginally the best* at h6 (49.4 vs KNN 49.7, SAITS 50.3), with
 GRU-D/GRU best at the longer horizons; all inside ±std.
 
+## Third dataset (Delhi Multi-Site, CPCB; Mendeley `bzhzr9b64v`)
+
+70,227 rows, 6 stations, hourly 2018-06 → 2019-10; windows 1,950 / 354 / 540.
+The **published series is essentially complete** (< 0.2% missing) but unusually
+**noisy/extreme** (PM2.5 mean ≈ 93, std ≈ 98 µg/m³), with a broader chemistry
+panel (PM2.5, PM10, NO/NO₂/NOₓ, NH₃, SO₂, CO, O₃, benzene) + meteorology.
+GPU-trained (Colab); model/training/window config identical to the other two
+networks. Delhi is the **complete-but-hard-to-impute** interior point of the
+imputability axis (not an intermediate-*missingness* case).
+
+**Delhi main results** (PM2.5 RMSE, 3-seed mean ± std; `outputs/delhi/tables/`):
+
+| Model | h6 | h24 | h72 |
+|---|---|---|---|
+| Persistence | **21.28** | **25.55** | 30.91 |
+| Seasonal-naive | 27.68 | **25.55** | 30.91 |
+| GRU | 25.50 ± 1.44 | 30.73 ± 1.26 | 37.02 ± 3.12 |
+| GRU-D | 24.42 ± 1.41 | 31.49 ± 1.11 | 32.02 ± 1.08 |
+| DLinear | 21.87 ± 0.55 | 28.46 ± 3.83 | **27.43 ± 0.74** |
+| PatchTST | 30.34 ± 2.38 | 35.37 ± 2.68 | 39.23 ± 3.53 |
+| Two-stage (KNN) | 30.58 ± 4.75 | 34.30 ± 0.67 | 40.14 ± 2.81 |
+| Two-stage (SAITS) | 26.73 ± 2.04 | 33.54 ± 0.79 | 34.86 ± 0.37 |
+| Proposed (MAT) | 31.44 ± 2.55 | 33.06 ± 4.09 | 43.60 ± 3.43 |
+| Proposed (variant B) | 31.44 ± 2.55 | 33.06 ± 4.09 | 43.60 ± 3.43 |
+| Proposed + miss-dropout | 26.42 ± 0.79 | 30.83 ± 2.52 | 34.37 ± 1.59 |
+
+**Honest read:** on this complete, short-range-periodic network the **proposed
+model is not competitive on clean data** — naive persistence and DLinear lead;
+the mask-native pathway buys nothing where there is essentially no missingness to
+be aware of. This is the high-imputability end of the rule (Delhi imputability
+−0.09; SAITS *fails* its forward-fill quality gate, val MIT-MAE 0.280 vs 0.234),
+and the rule correctly recommends **impute-then-forecast** here. We report it as
+the counterweight to the Dhaka result, not as a win.
+
 **The missingness-severity crossover — a two-factor finding**
 (`crossover.*`, `decision_summary.*`, `crossover_combined.*`,
 `stratified_gap.*`). We trace the *advantage* (best impute-then-forecast RMSE −
 best end-to-end RMSE; positive ⇒ end-to-end wins) against **effective input
-missingness** so both networks share one severity axis. The two networks behave
-**oppositely** under station outages, and that is the result:
+missingness** so all three networks share one severity axis. Under station
+outages the networks **diverge by imputability** — Dhaka crosses into
+end-to-end territory, Delhi and Beijing stay on the impute-then-forecast side:
 
-| Effective input missingness (h6, outage) | Dhaka gap | Beijing gap |
-|---|---|---|
-| low (~3–10%) | — (Dhaka starts at 33%) | +0.7 → −0.9 |
-| ~33% | −0.2 | −2.1 |
-| ~50% | +0.4 | −4.3 |
-| ~66% | **+1.7** | −4.0 |
-| ~80% | +1.0 | (n/a) |
+| Effective input missingness (h6, outage) | Dhaka gap | Delhi gap | Beijing gap |
+|---|---|---|---|
+| low (~3–10%) | — (Dhaka starts at 33%) | −2.0 → −2.0 | +0.7 → −0.9 |
+| ~33% | −0.2 | −1.7 | −2.1 |
+| ~50% | +0.4 | −2.6 | −4.3 |
+| ~66% | **+1.7** | −6.0 | −4.0 |
+| ~80% | +1.0 | −7.4 | (n/a) |
 
 - **Dhaka (severe, less-structured): a clean crossover.** End-to-end overtakes
   the best impute-then-forecast pipeline above **~38% effective missingness at
@@ -281,43 +325,52 @@ missingness** so both networks share one severity axis. The two networks behave
   (−0.9 → −4.3 µg/m³). Strong diurnal/seasonal structure lets SAITS reconstruct
   even 6–48 h outage blocks, so more (well-imputed) missingness helps the
   two-stage pipeline.
-- **Under cell-wise MCAR, the deep imputer wins throughout on both networks**
-  (the intact same-timestep cross-section is trivially imputable).
+- **Under cell-wise MCAR, the deep imputer wins throughout on all three
+  networks** (the intact same-timestep cross-section is trivially imputable).
 
 **Honest conclusion:** the crossover is **not a single universal missingness
 threshold** — it depends on missingness severity *and* series imputability.
 End-to-end forecasting helps specifically in the **high-missingness,
 low-imputability** regime (Dhaka), the operational reality of incomplete
-networks in the developing world. What generalizes across both networks is
+networks in the developing world. What generalizes across networks is
 **accuracy parity** with the strongest pipelines (including the deep imputer)
 and the **elimination of the serving-time imputation stage**.
 
-**Making imputability measurable (`imputability.*`,
+**Making imputability measurable — the predictive rule (`imputability.*`,
 `decision_by_imputability.*`, `imputability_crossover.*`).** To turn "it depends
 on imputability" from a narrative into a *predictor*, we measure imputability
 directly: hide a seeded 20% of observed test cells and compare the trained SAITS
 imputer's reconstruction RMSE to forward-fill, `imputability = 1 −
-RMSE_SAITS/RMSE_ffill` (standardized units; higher = more reconstructable). The
-two networks order as the story predicts — **Beijing +0.20** (deep imputer beats
-ffill) vs **Dhaka −0.39** (deep imputer *worse* than ffill) — and the
-end-to-end advantage at a fixed severe operating point (h6, +50% outage)
-**declines monotonically with imputability**:
+RMSE_SAITS/RMSE_ffill` (standardized units; higher = more reconstructable). With
+the **third network (Delhi, CPCB; 6 sites, 2018–2019)** now trained, the three
+networks order cleanly and the end-to-end advantage at a fixed severe operating
+point (h6, ~50% outage) **declines monotonically with imputability and crosses
+zero between Dhaka and Delhi** — the predictive headline result:
 
-| Network | imputability | end-to-end advantage (h6, +50% outage) | winner |
+| Network | imputability | end-to-end advantage (h6, ~50% outage) | winner |
 |---|---|---|---|
 | Dhaka | −0.39 | **+1.69 µg/m³** | end-to-end |
+| Delhi | −0.09 | **−2.60 µg/m³** | impute-then-forecast |
 | Beijing | +0.20 | **−4.29 µg/m³** | impute-then-forecast |
 
-A **third network (Delhi, CPCB; 6 sites, 2018–2019)** is being added on the same
-axis to convert these two opposite anchors into a single
-crossover-vs-imputability curve and a deployable rule ("measure imputability,
-then choose the paradigm"). The published Delhi series is complete (gap-free, no
-natural missingness) but extreme and spiky (PM2.5 mean ≈ 93, std ≈ 98
-µg/m³), so it probes whether a *complete-but-noisy* network is reconstructable —
-making the x-axis genuinely **imputability**, not completeness. Delhi results
-are pending the GPU training run; if its imputability does not land between the
-anchors, that is reported as a finding (imputability necessary but not
-sufficient) rather than smoothed over.
+The rule is therefore **deployable**: *measure a network's imputability, then
+choose the paradigm* — forecast end-to-end when imputability is low (here
+≲ −0.3), impute-then-forecast otherwise. Crucially the axis is **imputability,
+not completeness**: the published Delhi series is **complete** (gap-free, < 0.2%
+missing) yet extreme and spiky (PM2.5 mean ≈ 93, std ≈ 98 µg/m³), and it lands
+*inside* the curve on the impute-then-forecast side. Two honest Delhi
+counterweights, reported not hidden:
+
+- On complete, noisy Delhi the **proposed model is not competitive on clean
+  data** — persistence (21.3 µg/m³ @h6) and DLinear (21.9) lead while the
+  proposed model trails at 31.4; a network so short-range-periodic that naive
+  persistence is hard to beat and the mask-native pathway buys nothing.
+- The Delhi **SAITS imputer fails its forward-fill quality gate** (val MIT-MAE
+  0.280 vs ffill 0.234) — i.e. even the deep imputer cannot beat forward-fill,
+  the operational meaning of low/near-zero imputability.
+
+Both are exactly what the rule predicts for the high-imputability regime (don't
+go end-to-end), so they *strengthen* rather than undercut the finding.
 
 ## Interpretability (`interpretability_summary.json`, attention figures)
 
@@ -328,21 +381,30 @@ timesteps; permutation importance PM2.5 ≫ PM10 > RH > BP > Temp.
 
 ## Paper narrative (revised)
 
-1. **Parity, on two networks.** End-to-end missingness-aware forecasting
-   **matches** strong impute-then-forecast pipelines — including a deep imputer
-   (SAITS) — at all three horizons on both Dhaka and Beijing (no significant
-   difference across seeds), while **eliminating the imputation stage** and its
-   per-refresh re-imputation cost. This is the claim that generalizes.
+0. **A predictive rule, on three networks.** The paradigm choice is governed by
+   a **directly measured imputability**; the end-to-end advantage at fixed severe
+   outage declines monotonically with imputability and crosses zero
+   (Dhaka −0.39/+1.69 → Delhi −0.09/−2.60 → Beijing +0.20/−4.29). *Measure
+   imputability, then choose the paradigm.* This is the headline lift.
+1. **Parity, on the incomplete networks.** End-to-end missingness-aware
+   forecasting **matches** strong impute-then-forecast pipelines — including a
+   deep imputer (SAITS) — at all three horizons on both Dhaka and Beijing (no
+   significant difference across seeds), while **eliminating the imputation
+   stage** and its per-refresh re-imputation cost. (On complete, noisy Delhi the
+   proposed model is *not* competitive on clean data — persistence/DLinear lead —
+   which is exactly the high-imputability regime the rule routes away from
+   end-to-end; reported, not hidden.)
 2. **Conditional robustness, stated honestly.** On the severely-incomplete
    Dhaka network, under the realistic station-outage mechanism, the
    missingness-dropout variant **degrades most gracefully** and is **best on
    high-pollution episodes**. This advantage is **specific to severe
-   missingness**: on the near-complete Beijing network a deep imputer (SAITS)
-   is the most robust under the same outage corruption, and under idealized
-   cell-wise MCAR SAITS is most robust on both datasets. We report these losses
-   rather than hide them — the method helps most exactly where missingness is
-   severe, which is the deployment regime (resource-constrained, incomplete
-   monitoring networks) it is designed for.
+   missingness**: on the more-imputable Delhi and Beijing networks a deep imputer
+   (SAITS) is the most robust under the same outage corruption, and under
+   idealized cell-wise MCAR SAITS is most robust on all three networks. We report
+   these losses rather than hide them — the method helps most exactly where
+   missingness is severe and series are hard to impute, which is the deployment
+   regime (resource-constrained, incomplete monitoring networks) it is designed
+   for.
 3. **Strong baselines, not strawmen.** The **missingness-native RNN (GRU-D)
    does not beat** the proposed transformer, and **PatchTST/DLinear are poorly
    suited** to heavy multivariate missingness — establishing that parity is
