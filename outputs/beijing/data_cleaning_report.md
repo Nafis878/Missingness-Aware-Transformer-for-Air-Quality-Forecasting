@@ -75,7 +75,7 @@ Each raw file concatenates per-station blocks, each beginning with its own unit 
 | PRES | 0 |
 | DEWP | 0 |
 | RAIN | 0 |
-| wd_sin | 316 |
+| wd_sin | 113 |
 | wd_cos | 113 |
 | WSPM | 0 |
 

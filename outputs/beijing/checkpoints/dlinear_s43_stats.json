@@ -1,0 +1,73 @@
+{
+  "name": "dlinear",
+  "seed": 43,
+  "checkpoint": "/content/Missingness-Aware-Transformer-for-Air-Quality-Forecasting/outputs/beijing/checkpoints/dlinear_seed43.pt",
+  "best_val_loss": 1.2710989693227024,
+  "best_epoch": 4,
+  "epochs_run": 12,
+  "train_time_s": 20.4,
+  "n_parameters": 9306,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.7379552800497714,
+      "val": 1.3177774845046573
+    },
+    {
+      "epoch": 1,
+      "train": 0.6575049832885441,
+      "val": 1.356139107953006
+    },
+    {
+      "epoch": 2,
+      "train": 0.6450302665313368,
+      "val": 1.3420060279183212
+    },
+    {
+      "epoch": 3,
+      "train": 0.6370335901564529,
+      "val": 1.3129363262280311
+    },
+    {
+      "epoch": 4,
+      "train": 0.6351058813158305,
+      "val": 1.2710989693227024
+    },
+    {
+      "epoch": 5,
+      "train": 0.6312824782964144,
+      "val": 1.308433735525127
+    },
+    {
+      "epoch": 6,
+      "train": 0.628500974022087,
+      "val": 1.3062745563763611
+    },
+    {
+      "epoch": 7,
+      "train": 0.6280367910959338,
+      "val": 1.362862279694973
+    },
+    {
+      "epoch": 8,
+      "train": 0.6248856381681259,
+      "val": 1.290174539282505
+    },
+    {
+      "epoch": 9,
+      "train": 0.62168658523015,
+      "val": 1.302226654019475
+    },
+    {
+      "epoch": 10,
+      "train": 0.6219254383778894,
+      "val": 1.3284342761675785
+    },
+    {
+      "epoch": 11,
+      "train": 0.6205995080593928,
+      "val": 1.3238061116318496
+    }
+  ],
+  "latency_ms_per_window": 0.09345198829199963
+}

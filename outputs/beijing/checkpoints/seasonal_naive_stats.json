@@ -1,0 +1,7 @@
+{
+  "name": "seasonal_naive",
+  "seed": 42,
+  "n_parameters": 0,
+  "train_time_s": 0.0,
+  "latency_ms_per_window": 0.014403122818849309
+}

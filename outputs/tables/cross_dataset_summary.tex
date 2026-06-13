@@ -1,0 +1,25 @@
+\begin{table}
+\caption{Cross-dataset summary (PM2.5): test RMSE at 24 h (mean $\pm$ std over seeds for learned models) and RMSE degradation at 6 h under +50\% station-outage corruption. Dhaka: 16 stations, 412,104 station-hours, natural PM2.5 missingness 23.7\%; Beijing: 12 stations, 420,768 station-hours, natural PM2.5 missingness 2.1\%.}
+\label{tab:cross_dataset}
+\begin{tabular}{lllll}
+\toprule
+ & \multicolumn{2}{r}{Dhaka} & \multicolumn{2}{r}{Beijing} \\
+ & RMSE h24 & ΔRMSE h6 @+50\% outage & RMSE h24 & ΔRMSE h6 @+50\% outage \\
+\midrule
+Persistence & 99.02 & — & 90.00 & — \\
+Seasonal-naive & 93.67 & — & 90.14 & — \\
+SARIMA & 83.87 & — & NaN & NaN \\
+LSTM & 78.05 ± 0.08 & — & NaN & NaN \\
+GRU & 76.45 ± 0.20 & — & 75.90 ± 0.18 & — \\
+GRU-D & 76.69 ± 0.49 & +5.01 & 75.87 ± 0.48 & +15.56 \\
+DLinear & 80.90 ± 1.34 & +9.10 & 80.62 ± 0.33 & +19.71 \\
+PatchTST & 84.34 ± 1.14 & +8.90 & 79.71 ± 0.89 & +23.20 \\
+Two-stage (KNN) & 76.42 ± 0.75 & +3.47 & 76.83 ± 0.37 & +18.59 \\
+Two-stage (MICE) & 76.81 ± 0.68 & +3.05 & NaN & NaN \\
+Two-stage (SAITS) & 76.31 ± 0.40 & +3.90 & 76.61 ± 0.40 & +13.31 \\
+Proposed (MAT) & 76.46 ± 0.51 & +3.06 & 76.79 ± 0.36 & +18.46 \\
+Proposed (variant B) & 76.00 ± 0.51 & — & 76.74 ± 0.29 & — \\
+Proposed + miss-dropout & 79.69 ± 1.77 & +2.04 & 76.37 ± 0.25 & +16.84 \\
+\bottomrule
+\end{tabular}
+\end{table}

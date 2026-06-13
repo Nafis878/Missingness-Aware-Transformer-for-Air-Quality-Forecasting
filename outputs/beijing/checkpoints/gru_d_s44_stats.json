@@ -1,0 +1,58 @@
+{
+  "name": "gru_d",
+  "seed": 44,
+  "checkpoint": "/content/Missingness-Aware-Transformer-for-Air-Quality-Forecasting/outputs/beijing/checkpoints/gru_d_seed44.pt",
+  "best_val_loss": 1.2711915397289844,
+  "best_epoch": 1,
+  "epochs_run": 9,
+  "train_time_s": 328.7,
+  "n_parameters": 67884,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.667224403836653,
+      "val": 1.3281669427573324
+    },
+    {
+      "epoch": 1,
+      "train": 0.6055249972289557,
+      "val": 1.2711915397289844
+    },
+    {
+      "epoch": 2,
+      "train": 0.5772168879303886,
+      "val": 1.281952063130599
+    },
+    {
+      "epoch": 3,
+      "train": 0.545183195384102,
+      "val": 1.3847039392136156
+    },
+    {
+      "epoch": 4,
+      "train": 0.5102123258950308,
+      "val": 1.4300460833861848
+    },
+    {
+      "epoch": 5,
+      "train": 0.4694144150825609,
+      "val": 1.4760489301747586
+    },
+    {
+      "epoch": 6,
+      "train": 0.4412050637011759,
+      "val": 1.6119372164998362
+    },
+    {
+      "epoch": 7,
+      "train": 0.4142078373412046,
+      "val": 1.67848055566931
+    },
+    {
+      "epoch": 8,
+      "train": 0.3926306275278366,
+      "val": 1.6775032021187717
+    }
+  ],
+  "latency_ms_per_window": 1.0143196581726515
+}

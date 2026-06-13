@@ -1,0 +1,5 @@
+,DLinear,GRU-D,GRU,PatchTST,Persistence,Proposed + miss-dropout,Proposed (MAT),Seasonal-naive,Two-stage (KNN),Two-stage (SAITS),Proposed (variant B)
+Winter,121.5,118.2,117.3,119.3,132.2,116.2,117.4,132.6,116.2,118.4,117.1
+Spring,68.9,63.0,64.1,68.5,81.5,65.9,65.2,81.3,66.1,64.2,65.3
+Summer,39.9,37.5,37.6,41.1,46.5,39.7,38.9,46.9,39.0,38.6,38.9
+Autumn,73.5,61.1,63.8,71.9,79.9,65.7,63.9,79.7,64.5,62.8,63.8

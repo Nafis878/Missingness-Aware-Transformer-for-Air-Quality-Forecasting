@@ -1,0 +1,54 @@
+{
+  "name": "two_stage_saits",
+  "seed": 43,
+  "checkpoint": "/content/Missingness-Aware-Transformer-for-Air-Quality-Forecasting/outputs/beijing/checkpoints/two_stage_saits_seed43.pt",
+  "best_val_loss": 1.2791220818797073,
+  "best_epoch": 0,
+  "epochs_run": 8,
+  "train_time_s": 33.1,
+  "n_parameters": 403986,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.6999248880570547,
+      "val": 1.2791220818797073
+    },
+    {
+      "epoch": 1,
+      "train": 0.5993784614619806,
+      "val": 1.3334687170622133
+    },
+    {
+      "epoch": 2,
+      "train": 0.5360624716279507,
+      "val": 1.466843808451539
+    },
+    {
+      "epoch": 3,
+      "train": 0.45428333419659916,
+      "val": 1.597403663379251
+    },
+    {
+      "epoch": 4,
+      "train": 0.3837727487161367,
+      "val": 1.7976140829531086
+    },
+    {
+      "epoch": 5,
+      "train": 0.33308485050221065,
+      "val": 1.7718677315046534
+    },
+    {
+      "epoch": 6,
+      "train": 0.3021630908067144,
+      "val": 1.6762576604898054
+    },
+    {
+      "epoch": 7,
+      "train": 0.27453407630016996,
+      "val": 1.6778448889007083
+    }
+  ],
+  "impute_time_s": 22.2,
+  "latency_ms_per_window": 0.13245586271832083
+}

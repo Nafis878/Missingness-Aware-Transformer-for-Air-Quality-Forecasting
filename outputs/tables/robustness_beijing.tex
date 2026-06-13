@@ -1,0 +1,67 @@
+\begin{table}
+\caption{PM2.5 RMSE (\si{\micro\gram\per\cubic\metre}) under additional synthetic input missingness: cell-wise MCAR vs station-outage blocks. Two-stage pipelines re-impute the corrupted series with imputers fit on (uncorrupted) train rows; for SAITS this means reusing the trained imputer, transform-only.}
+\label{tab:robustness}
+\begin{tabular}{lllrrrr}
+\toprule
+ &  & level & 0 & 10 & 30 & 50 \\
+mode & model & horizon &  &  &  &  \\
+\midrule
+\multirow[t]{21}{*}{miss} & \multirow[t]{3}{*}{DLinear} & 6 & 52.15 & 57.38 & 61.99 & 70.91 \\
+ &  & 24 & 81.04 & 83.17 & 84.95 & 88.38 \\
+ &  & 72 & 89.85 & 91.97 & 92.99 & 94.31 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{GRU-D} & 6 & 50.04 & 50.36 & 50.90 & 53.02 \\
+ &  & 24 & 75.57 & 75.67 & 75.77 & 76.39 \\
+ &  & 72 & 84.36 & 84.39 & 84.71 & 84.69 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{PatchTST} & 6 & 58.05 & 61.88 & 71.11 & 79.11 \\
+ &  & 24 & 79.94 & 80.84 & 83.91 & 87.99 \\
+ &  & 72 & 87.46 & 87.41 & 87.58 & 88.20 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Proposed (MAT)} & 6 & 49.71 & 53.12 & 56.69 & 66.04 \\
+ &  & 24 & 76.50 & 77.84 & 80.25 & 84.72 \\
+ &  & 72 & 86.04 & 87.37 & 90.20 & 92.76 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Proposed + miss-dropout} & 6 & 51.19 & 52.92 & 54.62 & 62.91 \\
+ &  & 24 & 76.70 & 77.11 & 77.99 & 80.38 \\
+ &  & 72 & 85.74 & 85.67 & 85.64 & 85.24 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (KNN)} & 6 & 50.61 & 51.33 & 51.47 & 56.35 \\
+ &  & 24 & 76.42 & 76.66 & 76.79 & 78.42 \\
+ &  & 72 & 85.96 & 86.03 & 86.07 & 85.81 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (SAITS)} & 6 & 50.43 & 50.45 & 50.05 & 51.76 \\
+ &  & 24 & 76.42 & 76.50 & 76.45 & 76.74 \\
+ &  & 72 & 87.38 & 87.34 & 87.23 & 86.66 \\
+\cline{1-7} \cline{2-7}
+\multirow[t]{21}{*}{out} & \multirow[t]{3}{*}{DLinear} & 6 & 52.15 & 56.72 & 64.49 & 71.86 \\
+ &  & 24 & 81.04 & 82.17 & 84.63 & 85.89 \\
+ &  & 72 & 89.85 & 89.97 & 90.49 & 90.99 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{GRU-D} & 6 & 50.04 & 53.14 & 59.53 & 65.60 \\
+ &  & 24 & 75.57 & 76.52 & 78.26 & 80.52 \\
+ &  & 72 & 84.36 & 84.49 & 84.57 & 84.96 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{PatchTST} & 6 & 58.05 & 64.63 & 75.05 & 81.25 \\
+ &  & 24 & 79.94 & 81.86 & 86.95 & 95.21 \\
+ &  & 72 & 87.46 & 87.72 & 89.06 & 93.35 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Proposed (MAT)} & 6 & 49.71 & 53.72 & 60.74 & 68.18 \\
+ &  & 24 & 76.50 & 77.99 & 81.48 & 85.29 \\
+ &  & 72 & 86.04 & 87.85 & 90.84 & 93.91 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Proposed + miss-dropout} & 6 & 51.19 & 54.77 & 61.18 & 68.03 \\
+ &  & 24 & 76.70 & 77.88 & 79.81 & 82.36 \\
+ &  & 72 & 85.74 & 85.75 & 85.69 & 85.80 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (KNN)} & 6 & 50.61 & 54.91 & 61.77 & 69.20 \\
+ &  & 24 & 76.42 & 77.92 & 80.18 & 82.85 \\
+ &  & 72 & 85.96 & 86.01 & 85.58 & 85.60 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (SAITS)} & 6 & 50.43 & 53.11 & 58.69 & 63.74 \\
+ &  & 24 & 76.42 & 77.04 & 78.10 & 79.33 \\
+ &  & 72 & 87.38 & 87.34 & 87.18 & 87.49 \\
+\cline{1-7} \cline{2-7}
+\bottomrule
+\end{tabular}
+\end{table}

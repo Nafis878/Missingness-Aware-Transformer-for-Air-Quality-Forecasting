@@ -1,0 +1,55 @@
+{
+  "name": "proposed",
+  "seed": 42,
+  "checkpoint": "/content/Missingness-Aware-Transformer-for-Air-Quality-Forecasting/outputs/beijing/checkpoints/proposed_seed42.pt",
+  "best_val_loss": 1.3239767775810904,
+  "best_epoch": 0,
+  "epochs_run": 8,
+  "train_time_s": 33.7,
+  "n_parameters": 405650,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.6901786377173081,
+      "val": 1.3239767775810904
+    },
+    {
+      "epoch": 1,
+      "train": 0.6019648501961318,
+      "val": 1.4412716834239419
+    },
+    {
+      "epoch": 2,
+      "train": 0.5447785992120298,
+      "val": 1.6370098661094004
+    },
+    {
+      "epoch": 3,
+      "train": 0.4685753293315455,
+      "val": 1.643332849138844
+    },
+    {
+      "epoch": 4,
+      "train": 0.39857119014150144,
+      "val": 1.6312586607784583
+    },
+    {
+      "epoch": 5,
+      "train": 0.34228669793298755,
+      "val": 1.743317965121757
+    },
+    {
+      "epoch": 6,
+      "train": 0.3112242469862819,
+      "val": 1.6955992473985484
+    },
+    {
+      "epoch": 7,
+      "train": 0.2789262009652604,
+      "val": 1.8497179065485696
+    }
+  ],
+  "latency_ms_per_window": 0.13825901492226192,
+  "attention_variant": "A",
+  "miss_dropout": false
+}

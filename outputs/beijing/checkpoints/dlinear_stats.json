@@ -1,0 +1,58 @@
+{
+  "name": "dlinear",
+  "seed": 42,
+  "checkpoint": "/content/Missingness-Aware-Transformer-for-Air-Quality-Forecasting/outputs/beijing/checkpoints/dlinear_seed42.pt",
+  "best_val_loss": 1.3027112509632572,
+  "best_epoch": 1,
+  "epochs_run": 9,
+  "train_time_s": 15.3,
+  "n_parameters": 9306,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.7329985758701607,
+      "val": 1.3030825848637686
+    },
+    {
+      "epoch": 1,
+      "train": 0.6579882524822935,
+      "val": 1.3027112509632572
+    },
+    {
+      "epoch": 2,
+      "train": 0.6456908255636753,
+      "val": 1.318100796674303
+    },
+    {
+      "epoch": 3,
+      "train": 0.6418574391223119,
+      "val": 1.3036306691068
+    },
+    {
+      "epoch": 4,
+      "train": 0.6358740956111475,
+      "val": 1.3199574013659932
+    },
+    {
+      "epoch": 5,
+      "train": 0.6331855749656079,
+      "val": 1.3112686073933295
+    },
+    {
+      "epoch": 6,
+      "train": 0.6292298719905287,
+      "val": 1.3237610294851283
+    },
+    {
+      "epoch": 7,
+      "train": 0.6284738622256651,
+      "val": 1.3325363125763154
+    },
+    {
+      "epoch": 8,
+      "train": 0.6257964778161267,
+      "val": 1.306311487269193
+    }
+  ],
+  "latency_ms_per_window": 0.09196901285562845
+}

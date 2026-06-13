@@ -11,12 +11,15 @@ and is compared against impute-then-forecast pipelines (KNN, MICE, and the
 deep imputer **SAITS**), the missingness-native **GRU-D** RNN, modern
 forecasters (**DLinear**, **PatchTST**), and statistical baselines.
 
-**The claim is parity-plus-deployability, not raw accuracy:** end-to-end
-missingness-aware forecasting *matches* the strong impute-then-forecast
-pipelines — including a deep imputer — at every horizon while removing the
-imputation stage; with missingness dropout it degrades most gracefully under
-the *realistic* station-outage missingness mechanism and is best on
-high-pollution episodes.
+**The claim is parity-plus-deployability, not raw accuracy:** across **two
+monitoring networks** (Dhaka and Beijing), end-to-end missingness-aware
+forecasting *matches* the strong impute-then-forecast pipelines — including a
+deep imputer — at every horizon while removing the imputation stage. On the
+severely-incomplete Dhaka network the missingness-dropout variant additionally
+degrades most gracefully under realistic station outages and is best on
+high-pollution episodes — an advantage that, we show honestly, is **specific
+to severe missingness** and does not carry over to the near-complete Beijing
+network.
 
 **Everything runs on a desktop CPU**: small models (d_model 128, 3 layers,
 ~406k parameters), vanilla PyTorch, fixed seeds, deterministic flags. All
@@ -52,22 +55,30 @@ deterministic single runs):
   difference** against any of them. (A previously reported "two-stage KNN
   beats us at h24, p = 0.042" was a seed-42 artifact: across seeds
   p = 0.038 / 0.042 / 0.891. See [`outputs/RESULTS.md`](outputs/RESULTS.md).)
-- **Robustness splits by mechanism — and we report both halves.** Under
-  realistic **station-outage** corruption, the missingness-dropout variant has
-  the flattest h6 degradation slope (+2.0 µg/m³ at +50%) and the lowest RMSE
-  there (68.3), beating two-stage SAITS (+3.9) and KNN (+3.5). Under idealized
-  **cell-wise MCAR**, two-stage **SAITS is the most robust** (essentially flat)
-  — the deep imputer handles MCAR's intact cross-section well, so for that
-  mechanism an impute-then-forecast pipeline is the better choice.
-- **High-pollution episodes** (observed PM2.5 > 150 µg/m³): proposed +
+- **Robustness is conditional on severe missingness — and we say so.** On
+  Dhaka (23% natural missingness), under realistic **station-outage**
+  corruption, the missingness-dropout variant has the flattest h6 degradation
+  slope (+2.0 µg/m³ at +50%) and the lowest RMSE there, beating two-stage SAITS
+  (+3.9) and KNN (+3.5). But this advantage **does not generalize to the
+  near-complete Beijing network** (2% missing): there a deep imputer (SAITS) is
+  the most robust under the same outage corruption (+13.3 vs the proposed
+  family's +16.8/+18.5), because dense, periodic series make even synthetic
+  block gaps reconstructable. Under idealized **cell-wise MCAR**, SAITS is most
+  robust on both datasets. The method helps most exactly where missingness is
+  severe — its target deployment regime.
+- **A second monitoring network confirms parity.** On Beijing the proposed
+  model and variant B are in fact *marginally the best* at 6 h (49.4 vs KNN
+  49.7, SAITS 50.3 µg/m³), parity at the longer horizons.
+- **High-pollution episodes** (Dhaka, observed PM2.5 > 150 µg/m³): proposed +
   missingness dropout is best at 6 h (130.2) and 24 h (125.3).
 - **Strong baselines, not strawmen.** GRU-D (missingness-native RNN) does *not*
   beat the proposed transformer; PatchTST and DLinear are clearly behind and
   collapse under corruption — the parity result is against genuinely strong
   competitors, including a quality-gated deep imputer.
-- **Deployability** is the practical edge: the two-stage pipelines re-impute on
-  every data refresh (SAITS imputer fit 5.6 min; re-imputation at inference);
-  the end-to-end model runs at 1.8 ms/window with no imputation stage.
+- **Deployability** is the practical edge that generalizes: the two-stage
+  pipelines re-impute on every data refresh (SAITS imputer fit 5.6 min;
+  re-imputation at inference); the end-to-end model runs at 1.8 ms/window with
+  no imputation stage.
 
 Full consolidated numbers and the frank robustness assessment:
 [`outputs/RESULTS.md`](outputs/RESULTS.md).

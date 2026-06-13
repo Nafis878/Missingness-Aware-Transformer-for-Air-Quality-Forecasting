@@ -1,0 +1,12 @@
+,Parameters,Train time (min),Impute time (min),Latency (ms/window),Epochs
+DLinear,9306.0,0.3,0.0,0.09,9.0
+GRU-D,67884.0,5.5,0.0,1.01,9.0
+GRU,204562.0,0.5,0.0,0.24,8.0
+PatchTST,409490.0,0.8,0.0,0.17,9.0
+Persistence,0,0.0,0.0,0.03,-
+Proposed + miss-dropout,405650.0,0.8,0.0,0.14,8.0
+Proposed (MAT),405650.0,0.6,0.0,0.14,8.0
+Seasonal-naive,0,0.0,0.0,0.01,-
+Two-stage (KNN),403986.0,0.6,0.5,0.13,8.0
+Two-stage (SAITS),403986.0,0.6,0.4,0.13,8.0
+Proposed (variant B),405650.0,0.6,0.0,0.15,8.0
