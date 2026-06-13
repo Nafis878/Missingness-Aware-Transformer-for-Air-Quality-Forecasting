@@ -1,0 +1,68 @@
+{
+  "name": "patchtst",
+  "seed": 43,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\\air-transformer\\outputs\\checkpoints\\patchtst_seed43.pt",
+  "best_val_loss": 1.1811651116105804,
+  "best_epoch": 3,
+  "epochs_run": 11,
+  "train_time_s": 2349.3,
+  "n_parameters": 410258,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.9213741289868272,
+      "val": 1.2415266479521267
+    },
+    {
+      "epoch": 1,
+      "train": 0.7248764999753601,
+      "val": 1.194259133814515
+    },
+    {
+      "epoch": 2,
+      "train": 0.6557191775424487,
+      "val": 1.1827491107067656
+    },
+    {
+      "epoch": 3,
+      "train": 0.6184987401032064,
+      "val": 1.1811651116105804
+    },
+    {
+      "epoch": 4,
+      "train": 0.5881911796024142,
+      "val": 1.2036345431603541
+    },
+    {
+      "epoch": 5,
+      "train": 0.5564438244369857,
+      "val": 1.2213508930885653
+    },
+    {
+      "epoch": 6,
+      "train": 0.5332982243966701,
+      "val": 1.2333120418088206
+    },
+    {
+      "epoch": 7,
+      "train": 0.5091323437682646,
+      "val": 1.2043992675940283
+    },
+    {
+      "epoch": 8,
+      "train": 0.4924253521035455,
+      "val": 1.2238211564818287
+    },
+    {
+      "epoch": 9,
+      "train": 0.47561574812805424,
+      "val": 1.2180977044887404
+    },
+    {
+      "epoch": 10,
+      "train": 0.4591873427625314,
+      "val": 1.2007617759356959
+    }
+  ],
+  "latency_ms_per_window": 3.392836321262901
+}

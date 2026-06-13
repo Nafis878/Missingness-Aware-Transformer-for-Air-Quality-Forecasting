@@ -1,0 +1,28 @@
+2026-06-13 00:09:34,653 | INFO    | 03_train_baselines | logging to C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\outputs\beijing\logs\03_train_baselines_20260613_000934.log
+2026-06-13 00:09:36,918 | INFO    | src.data.dataset | loaded scalers from C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\data\processed\beijing\scalers.json
+2026-06-13 00:09:37,319 | INFO    | src.data.dataset | train: 11920 windows across 12 stations (L=168, stride=24)
+2026-06-13 00:09:37,337 | INFO    | src.data.dataset | val: 1068 windows across 12 stations (L=168, stride=24)
+2026-06-13 00:09:37,378 | INFO    | src.data.dataset | test: 4356 windows across 12 stations (L=168, stride=24)
+2026-06-13 00:09:37,380 | INFO    | 03_train_baselines | === dlinear seed 42 ===
+2026-06-13 00:09:41,160 | INFO    | src.train | dlinear epoch 00: train=0.7330 val=1.3031 lr=9.99e-04
+2026-06-13 00:09:43,201 | INFO    | src.train | dlinear epoch 01: train=0.6580 val=1.3027 lr=9.96e-04
+2026-06-13 00:09:45,207 | INFO    | src.train | dlinear epoch 02: train=0.6457 val=1.3181 lr=9.91e-04
+2026-06-13 00:09:47,216 | INFO    | src.train | dlinear epoch 03: train=0.6419 val=1.3036 lr=9.84e-04
+2026-06-13 00:09:49,277 | INFO    | src.train | dlinear epoch 04: train=0.6359 val=1.3200 lr=9.76e-04
+2026-06-13 00:09:51,350 | INFO    | src.train | dlinear epoch 05: train=0.6332 val=1.3113 lr=9.65e-04
+2026-06-13 00:09:53,495 | INFO    | src.train | dlinear epoch 06: train=0.6292 val=1.3238 lr=9.52e-04
+2026-06-13 00:09:55,454 | INFO    | src.train | dlinear epoch 07: train=0.6285 val=1.3325 lr=9.38e-04
+2026-06-13 00:09:57,469 | INFO    | src.train | dlinear epoch 08: train=0.6258 val=1.3063 lr=9.22e-04
+2026-06-13 00:09:57,469 | INFO    | src.train | dlinear: early stop at epoch 8 (best 1)
+2026-06-13 00:09:57,483 | INFO    | src.train | dlinear: done in 18.4s, best val=1.3027 (epoch 1), 9306 params
+2026-06-13 00:09:57,998 | INFO    | src.train | saved predictions to C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\outputs\beijing\predictions\seeds\dlinear_s42_test.npz
+2026-06-13 00:09:58,028 | INFO    | src.train | saved predictions to C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\outputs\beijing\predictions\dlinear_test.npz
+2026-06-13 00:09:58,029 | INFO    | 03_train_baselines | === dlinear seed 42 done in 20.6s ===
+2026-06-13 00:09:58,051 | INFO    | 03_train_baselines | PM2.5 test RMSE preview (ug/m3):
+{
+  "dlinear": {
+    "h6": 52.14617919921875,
+    "h24": 81.03887176513672,
+    "h72": 89.84808349609375
+  }
+}

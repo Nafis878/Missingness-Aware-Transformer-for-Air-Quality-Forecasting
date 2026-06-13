@@ -1,12 +1,24 @@
 \begin{table}
-\caption{PM2.5 RMSE (\si{\micro\gram\per\cubic\metre}) under additional synthetic input missingness: cell-wise MCAR vs station-outage blocks.}
+\caption{PM2.5 RMSE (\si{\micro\gram\per\cubic\metre}) under additional synthetic input missingness: cell-wise MCAR vs station-outage blocks. Two-stage pipelines re-impute the corrupted series with imputers fit on (uncorrupted) train rows; for SAITS this means reusing the trained imputer, transform-only.}
 \label{tab:robustness}
 \begin{tabular}{lllrrrr}
 \toprule
  &  & level & 0 & 10 & 30 & 50 \\
 mode & model & horizon &  &  &  &  \\
 \midrule
-\multirow[t]{12}{*}{miss} & \multirow[t]{3}{*}{Proposed (MAT)} & 6 & 66.78 & 67.68 & 69.96 & 72.68 \\
+\multirow[t]{24}{*}{miss} & \multirow[t]{3}{*}{DLinear} & 6 & 69.73 & 71.57 & 74.35 & 79.13 \\
+ &  & 24 & 80.34 & 80.28 & 81.84 & 85.00 \\
+ &  & 72 & 83.06 & 83.11 & 85.64 & 89.31 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{GRU-D} & 6 & 69.31 & 69.35 & 69.94 & 71.89 \\
+ &  & 24 & 76.41 & 77.13 & 77.31 & 76.93 \\
+ &  & 72 & 80.29 & 80.19 & 80.73 & 81.52 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{PatchTST} & 6 & 73.76 & 75.64 & 81.46 & 86.26 \\
+ &  & 24 & 84.72 & 87.92 & 95.71 & 101.74 \\
+ &  & 72 & 88.14 & 91.90 & 98.62 & 104.02 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Proposed (MAT)} & 6 & 66.78 & 67.68 & 69.96 & 72.68 \\
  &  & 24 & 77.11 & 77.44 & 78.33 & 78.47 \\
  &  & 72 & 80.74 & 80.72 & 81.17 & 81.56 \\
 \cline{2-7}
@@ -21,8 +33,24 @@ mode & model & horizon &  &  &  &  \\
  & \multirow[t]{3}{*}{Two-stage (MICE)} & 6 & 67.34 & 67.82 & 68.67 & 69.92 \\
  &  & 24 & 76.03 & 76.08 & 75.91 & 75.47 \\
  &  & 72 & 79.74 & 79.59 & 79.06 & 78.84 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (SAITS)} & 6 & 66.07 & 65.70 & 65.30 & 66.11 \\
+ &  & 24 & 76.58 & 76.26 & 76.39 & 75.43 \\
+ &  & 72 & 80.77 & 80.76 & 80.62 & 80.63 \\
 \cline{1-7} \cline{2-7}
-\multirow[t]{12}{*}{out} & \multirow[t]{3}{*}{Proposed (MAT)} & 6 & 66.78 & 67.79 & 68.14 & 69.84 \\
+\multirow[t]{24}{*}{out} & \multirow[t]{3}{*}{DLinear} & 6 & 69.73 & 72.14 & 74.87 & 78.82 \\
+ &  & 24 & 80.34 & 81.57 & 81.66 & 86.97 \\
+ &  & 72 & 83.06 & 83.57 & 85.45 & 88.36 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{GRU-D} & 6 & 69.31 & 70.72 & 72.58 & 74.32 \\
+ &  & 24 & 76.41 & 77.19 & 79.09 & 79.48 \\
+ &  & 72 & 80.29 & 80.78 & 81.21 & 83.07 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{PatchTST} & 6 & 73.76 & 75.89 & 78.12 & 82.66 \\
+ &  & 24 & 84.72 & 86.40 & 88.61 & 93.72 \\
+ &  & 72 & 88.14 & 89.17 & 92.07 & 96.10 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Proposed (MAT)} & 6 & 66.78 & 67.79 & 68.14 & 69.84 \\
  &  & 24 & 77.11 & 77.39 & 76.62 & 77.41 \\
  &  & 72 & 80.74 & 80.55 & 81.10 & 80.60 \\
 \cline{2-7}
@@ -37,6 +65,10 @@ mode & model & horizon &  &  &  &  \\
  & \multirow[t]{3}{*}{Two-stage (MICE)} & 6 & 67.34 & 68.38 & 68.48 & 70.39 \\
  &  & 24 & 76.03 & 76.49 & 75.82 & 77.62 \\
  &  & 72 & 79.74 & 79.41 & 79.50 & 79.86 \\
+\cline{2-7}
+ & \multirow[t]{3}{*}{Two-stage (SAITS)} & 6 & 66.07 & 67.10 & 67.94 & 69.97 \\
+ &  & 24 & 76.58 & 76.79 & 75.86 & 76.68 \\
+ &  & 72 & 80.77 & 80.65 & 80.57 & 81.37 \\
 \cline{1-7} \cline{2-7}
 \bottomrule
 \end{tabular}

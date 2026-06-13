@@ -35,29 +35,43 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from src.plotting_style import SEASON_ORDER, apply_style, save_figure
-from src.utils import export_table, load_config, seed_everything, setup_logging
+from src.plotting_style import apply_style, save_figure
+from src.utils import (
+    export_table,
+    load_config,
+    season_map,
+    seed_everything,
+    setup_logging,
+)
 
 logger = logging.getLogger(__name__)
 
+# Label order = display row order in the main results table.
 MODEL_LABELS = {
     "persistence": "Persistence",
     "seasonal_naive": "Seasonal-naive",
     "sarima": "SARIMA",
     "lstm": "LSTM",
     "gru": "GRU",
+    "gru_d": "GRU-D",
+    "dlinear": "DLinear",
+    "patchtst": "PatchTST",
     "two_stage_knn": "Two-stage (KNN)",
     "two_stage_mice": "Two-stage (MICE)",
+    "two_stage_saits": "Two-stage (SAITS)",
     "proposed": "Proposed (MAT)",
+    "variant_B": "Proposed (variant B)",
     "proposed_md": "Proposed + miss-dropout",
 }
 
-SEASON_OF_MONTH = {
-    12: "Winter", 1: "Winter", 2: "Winter",
-    3: "Pre-monsoon", 4: "Pre-monsoon", 5: "Pre-monsoon",
-    6: "Monsoon", 7: "Monsoon", 8: "Monsoon", 9: "Monsoon",
-    10: "Post-monsoon", 11: "Post-monsoon",
-}
+#: Deterministic single-run baselines (no seed sensitivity by construction).
+STATISTICAL_MODELS = ["persistence", "seasonal_naive", "sarima"]
+#: Models trained with multiple seeds; reported as mean +/- std.
+LEARNED_MODELS = [
+    "lstm", "gru", "gru_d", "dlinear", "patchtst",
+    "two_stage_knn", "two_stage_mice", "two_stage_saits",
+    "proposed", "variant_B", "proposed_md",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +87,30 @@ def load_bundles(cfg: dict[str, Any], suffix: str = "test") -> dict[str, dict]:
         bundles[name] = dict(np.load(path))
     logger.info("loaded %d bundles (%s): %s", len(bundles), suffix, sorted(bundles))
     return bundles
+
+
+def iter_seed_bundles(
+    cfg: dict[str, Any], model: str, suffix: str = "test"
+) -> dict[int, dict]:
+    """Per-seed prediction bundles for ``model``, keyed by seed.
+
+    Looks for ``predictions/seeds/{model}_s{seed}_{suffix}.npz`` for every seed
+    in ``ablation.seeds``; for the canonical seed (``cfg["seed"]``) falls back
+    to the top-level ``{model}_{suffix}.npz``. Missing seeds are logged and
+    skipped so partially trained models still appear (with honest seed counts).
+    """
+    pred_dir = Path(cfg["paths"]["predictions_dir"])
+    seeds = cfg.get("ablation", {}).get("seeds", [cfg["seed"]])
+    out: dict[int, dict] = {}
+    for seed in seeds:
+        path = pred_dir / "seeds" / f"{model}_s{seed}_{suffix}.npz"
+        if not path.exists() and seed == cfg["seed"]:
+            path = pred_dir / f"{model}_{suffix}.npz"
+        if path.exists():
+            out[seed] = dict(np.load(path))
+        else:
+            logger.warning("no %s bundle for %s seed %d", suffix, model, seed)
+    return out
 
 
 def unscale(arr: np.ndarray, pollutant: str, scalers: dict) -> np.ndarray:
@@ -219,6 +257,295 @@ def significance_table(
 
 
 # ---------------------------------------------------------------------------
+# Multi-seed aggregation
+# ---------------------------------------------------------------------------
+
+def seed_metrics_long(cfg: dict, scalers: dict) -> pd.DataFrame:
+    """Per-seed metrics, long format: model x seed x pollutant x horizon.
+
+    Learned models get one row per (seed, pollutant, horizon); deterministic
+    statistical baselines a single row with ``seed = NaN``. This is the
+    feedstock for the headline table and is written out as
+    ``metrics_full.csv``.
+    """
+    pred_dir = Path(cfg["paths"]["predictions_dir"])
+    frames = []
+    for model in STATISTICAL_MODELS:
+        path = pred_dir / f"{model}_test.npz"
+        if not path.exists():
+            continue
+        df = metrics_table({model: dict(np.load(path))}, cfg, scalers)
+        df.insert(1, "seed", np.nan)
+        frames.append(df)
+    for model in LEARNED_MODELS:
+        for seed, b in iter_seed_bundles(cfg, model).items():
+            df = metrics_table({model: b}, cfg, scalers)
+            df.insert(1, "seed", seed)
+            frames.append(df)
+    if not frames:
+        return pd.DataFrame()
+    return pd.concat(frames, ignore_index=True)
+
+
+def build_main_results(long_df: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+    """Headline primary-target table from the per-seed long frame.
+
+    RMSE cells are "mean ± std" strings over training seeds for learned
+    models (population std, matching the ablation table); statistical
+    baselines show their single deterministic value. MAE and R^2 columns are
+    seed means. Never reports a single-seed number where multi-seed exists.
+    """
+    pol = cfg["dataset"]["primary_target"]
+    horizons = cfg["dataset"]["horizons"]
+    pm = long_df[long_df["pollutant"] == pol]
+    rows: dict[str, dict] = {}
+    for model in [m for m in MODEL_LABELS if m in set(pm["model"])]:
+        grp = pm[pm["model"] == model]
+        row: dict = {}
+        for h in horizons:
+            hg = grp[grp["horizon"] == h]
+            if hg.empty:
+                continue
+            r = hg["RMSE"].to_numpy()
+            if model in STATISTICAL_MODELS or len(r) == 1:
+                row[("RMSE", f"h{h}")] = f"{r[0]:.2f}"
+            else:
+                row[("RMSE", f"h{h}")] = f"{r.mean():.2f} ± {r.std():.2f}"
+            row[("MAE", f"h{h}")] = f"{hg['MAE'].mean():.2f}"
+            row[("R2", f"h{h}")] = f"{hg['R2'].mean():.3f}"
+        row[("", "seeds")] = (1 if model in STATISTICAL_MODELS
+                              else int(grp["seed"].nunique()))
+        rows[MODEL_LABELS.get(model, model)] = row
+    tbl = pd.DataFrame(rows).T
+    tbl.columns = pd.MultiIndex.from_tuples(tbl.columns)
+    return tbl
+
+
+def significance_table_multiseed(
+    cfg: dict, scalers: dict, reference: str = "proposed"
+) -> pd.DataFrame:
+    """Per-seed Diebold-Mariano + bootstrap vs every baseline (primary target).
+
+    Design (documented in RESULTS.md): the reference model's seed *i* run is
+    paired with the baseline's seed *i* run (statistical baselines reuse their
+    single deterministic bundle for every pairing). Each pairing yields one DM
+    test on the anchor-time-sorted squared-error differential; the table
+    reports the median and range of the per-seed p-values plus an
+    all-seeds-significant flag. Averaging predictions over seeds first would
+    test a 3-member ensemble nobody deploys and flatter learned models
+    against the single-run statistical baselines.
+    """
+    targets = cfg["dataset"]["target_pollutants"]
+    horizons = cfg["dataset"]["horizons"]
+    pol = cfg["dataset"]["primary_target"]
+    ti = targets.index(pol)
+    pred_dir = Path(cfg["paths"]["predictions_dir"])
+    ref_bundles = iter_seed_bundles(cfg, reference)
+    if not ref_bundles:
+        logger.warning("significance: no %s bundles, skipping", reference)
+        return pd.DataFrame()
+    rows = []
+    for name in STATISTICAL_MODELS + LEARNED_MODELS:
+        if name == reference:
+            continue
+        if name in STATISTICAL_MODELS:
+            path = pred_dir / f"{name}_test.npz"
+            if not path.exists():
+                continue
+            single = dict(np.load(path))
+            base = {seed: single for seed in ref_bundles}
+        else:
+            base = iter_seed_bundles(cfg, name)
+        for hi, h in enumerate(horizons):
+            per_seed = []
+            for seed, ref in ref_bundles.items():
+                b = base.get(seed)
+                if b is None:
+                    continue
+                m = (ref["target_mask"][:, ti, hi] > 0) & (b["target_mask"][:, ti, hi] > 0)
+                m &= np.isfinite(b["predictions"][:, ti, hi])
+                if m.sum() < 10:
+                    continue
+                y = unscale(ref["targets"][m, ti, hi], pol, scalers)
+                e_ref = (unscale(ref["predictions"][m, ti, hi], pol, scalers) - y) ** 2
+                e_b = (unscale(b["predictions"][m, ti, hi], pol, scalers) - y) ** 2
+                dm, pval = diebold_mariano(e_ref, e_b, ref["anchor_time"][m],
+                                           nw_lag=max(1, -(-h // 24)))
+                diff, lo, hi_ci = paired_bootstrap_rmse_diff(e_ref, e_b, 1000, seed)
+                per_seed.append({"p": pval, "diff": diff, "lo": lo, "hi": hi_ci,
+                                 "n": int(m.sum())})
+            if not per_seed:
+                continue
+            ps = np.array([r["p"] for r in per_seed])
+            rows.append({
+                "baseline": MODEL_LABELS.get(name, name), "horizon": h,
+                "seeds": len(per_seed), "n": per_seed[0]["n"],
+                "DM_p_median": float(np.median(ps)),
+                "DM_p_min": float(ps.min()),
+                "DM_p_max": float(ps.max()),
+                "sig_all_seeds": bool((ps < 0.05).all()),
+                "RMSE_diff_mean": float(np.mean([r["diff"] for r in per_seed])),
+                "CI_lo_min": float(min(r["lo"] for r in per_seed)),
+                "CI_hi_max": float(max(r["hi"] for r in per_seed)),
+            })
+    return pd.DataFrame(rows)
+
+
+# ---------------------------------------------------------------------------
+# High-pollution-episode metric
+# ---------------------------------------------------------------------------
+
+def episode_table(cfg: dict, scalers: dict) -> pd.DataFrame:
+    """RMSE restricted to high-pollution hours (observed PM2.5 > threshold).
+
+    Operationally these are the hours that matter most. The subset conditions
+    on the OBSERVED target, so it is identical for every model — no
+    model-dependent selection. Learned models report mean +/- std over seeds;
+    statistical baselines a single value. ``n`` is the episode target count
+    at each horizon.
+    """
+    thr = float(cfg.get("evaluation", {}).get("episode_threshold", 150))
+    pol = cfg["dataset"]["primary_target"]
+    ti = cfg["dataset"]["target_pollutants"].index(pol)
+    horizons = cfg["dataset"]["horizons"]
+    pred_dir = Path(cfg["paths"]["predictions_dir"])
+
+    def episode_rmse(b: dict) -> dict[int, tuple[float, int]]:
+        out = {}
+        for hi, h in enumerate(horizons):
+            y_all = unscale(b["targets"][:, ti, hi], pol, scalers)
+            m = (b["target_mask"][:, ti, hi] > 0) & (y_all > thr)
+            m &= np.isfinite(b["predictions"][:, ti, hi])
+            p = unscale(b["predictions"][m, ti, hi], pol, scalers)
+            out[h] = (_metrics(p, y_all[m])["RMSE"], int(m.sum()))
+        return out
+
+    rows: dict[str, dict] = {}
+    n_row: dict = {}
+    for model in STATISTICAL_MODELS:
+        path = pred_dir / f"{model}_test.npz"
+        if not path.exists():
+            continue
+        per_h = episode_rmse(dict(np.load(path)))
+        rows[MODEL_LABELS[model]] = {f"h{h}": f"{r:.2f}"
+                                     for h, (r, _) in per_h.items()}
+        n_row = {f"h{h}": n for h, (_, n) in per_h.items()}
+    for model in LEARNED_MODELS:
+        per_seed = [episode_rmse(b)
+                    for b in iter_seed_bundles(cfg, model).values()]
+        if not per_seed:
+            continue
+        cells = {}
+        for h in horizons:
+            r = np.array([s[h][0] for s in per_seed])
+            cells[f"h{h}"] = (f"{r[0]:.2f}" if len(r) == 1
+                              else f"{r.mean():.2f} ± {r.std():.2f}")
+        rows[MODEL_LABELS[model]] = cells
+        n_row = {f"h{h}": per_seed[0][h][1] for h in horizons}
+    if not rows:
+        return pd.DataFrame()
+    tbl = pd.DataFrame(rows).T
+    tbl = tbl.reindex([lbl for lbl in MODEL_LABELS.values() if lbl in tbl.index])
+    tbl.loc["n (episode targets)"] = {k: str(v) for k, v in n_row.items()}
+    return tbl
+
+
+def episode_figure(tbl: pd.DataFrame, cfg: dict, figures_dir: Path) -> None:
+    """Grouped bars: episode RMSE per model x horizon (means over seeds)."""
+    thr = float(cfg.get("evaluation", {}).get("episode_threshold", 150))
+    data = tbl.drop(index=["n (episode targets)"], errors="ignore")
+    means = data.map(lambda s: float(str(s).split(" ±")[0]))
+    fig, ax = plt.subplots(figsize=(8.5, 4.2))
+    means.plot.bar(ax=ax, width=0.85)
+    ax.set_ylabel(f"PM2.5 RMSE (µg/m³), observed > {thr:.0f} µg/m³")
+    ax.set_xlabel("")
+    ax.legend(title="horizon", fontsize=8)
+    ax.set_title("High-pollution-episode forecast error (test period)")
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right", fontsize=8)
+    fig.tight_layout()
+    save_figure(fig, figures_dir, "episode_rmse")
+
+
+# ---------------------------------------------------------------------------
+# Cross-dataset summary
+# ---------------------------------------------------------------------------
+
+def _load_scalers_for(cfg: dict) -> dict:
+    return json.loads(
+        (Path(cfg["paths"]["processed_dir"]) / "scalers.json").read_text()
+    )
+
+
+def _outage_slope_h6(cfg: dict, scalers: dict, model: str) -> float | None:
+    """RMSE(+50% outage) - RMSE(clean) at h6, canonical-seed bundles."""
+    pred_dir = Path(cfg["paths"]["predictions_dir"])
+    clean_p = pred_dir / f"{model}_test.npz"
+    corr_p = pred_dir / f"{model}_test_out50.npz"
+    if not (clean_p.exists() and corr_p.exists()):
+        return None
+    pol = cfg["dataset"]["primary_target"]
+    ti = cfg["dataset"]["target_pollutants"].index(pol)
+    hi = cfg["dataset"]["horizons"].index(6)
+    vals = []
+    for p in (clean_p, corr_p):
+        b = dict(np.load(p))
+        m = b["target_mask"][:, ti, hi] > 0
+        pr = unscale(b["predictions"][m, ti, hi], pol, scalers)
+        y = unscale(b["targets"][m, ti, hi], pol, scalers)
+        vals.append(_metrics(pr, y)["RMSE"])
+    return vals[1] - vals[0]
+
+
+def cross_dataset_table(
+    primary_cfg: dict, secondary_cfg: dict
+) -> tuple[pd.DataFrame, str]:
+    """Models present on both datasets: h24 RMSE + h6 outage-degradation.
+
+    Returns (table, dataset-stats sentence for the caption). RMSE cells are
+    mean +/- std over seeds for learned models (single value for statistical
+    baselines); the robustness column is the canonical-seed RMSE increase
+    from clean to +50% station-outage corruption at h6.
+    """
+    blocks = {}
+    stats_bits = []
+    for cfg in (primary_cfg, secondary_cfg):
+        ds_name = str(cfg.get("dataset_name", "dhaka")).capitalize()
+        scalers = _load_scalers_for(cfg)
+        long_df = seed_metrics_long(cfg, scalers)
+        pol = cfg["dataset"]["primary_target"]
+        col_rmse, col_slope = {}, {}
+        for model in MODEL_LABELS:
+            grp = long_df[(long_df["model"] == model)
+                          & (long_df["pollutant"] == pol)
+                          & (long_df["horizon"] == 24)] if not long_df.empty \
+                else pd.DataFrame()
+            if grp.empty:
+                continue
+            r = grp["RMSE"].to_numpy()
+            label = MODEL_LABELS[model]
+            col_rmse[label] = (f"{r[0]:.2f}" if model in STATISTICAL_MODELS
+                               or len(r) == 1
+                               else f"{r.mean():.2f} ± {r.std():.2f}")
+            slope = _outage_slope_h6(cfg, scalers, model)
+            col_slope[label] = "—" if slope is None else f"+{slope:.2f}"
+        blocks[(ds_name, "RMSE h24")] = col_rmse
+        blocks[(ds_name, "ΔRMSE h6 @+50% outage")] = col_slope
+
+        df = pd.read_parquet(
+            Path(cfg["paths"]["processed_dir"]) / "all_stations.parquet"
+        )
+        stats_bits.append(
+            f"{ds_name}: {df['station'].nunique()} stations, {len(df):,} "
+            f"station-hours, natural PM2.5 missingness "
+            f"{df['PM2.5'].isna().mean() * 100:.1f}\\%"
+        )
+    tbl = pd.DataFrame(blocks)
+    tbl.columns = pd.MultiIndex.from_tuples(tbl.columns)
+    order = [lbl for lbl in MODEL_LABELS.values() if lbl in tbl.index]
+    return tbl.reindex(order).dropna(how="all"), "; ".join(stats_bits)
+
+
+# ---------------------------------------------------------------------------
 # Seasonal breakdown
 # ---------------------------------------------------------------------------
 
@@ -230,19 +557,20 @@ def seasonal_table(
     horizons = cfg["dataset"]["horizons"]
     ti = targets.index(cfg["dataset"]["primary_target"])
     hi = horizons.index(24)
+    month_season, season_order = season_map(cfg)
     rows = {}
     for name, b in bundles.items():
         months = pd.to_datetime(b["anchor_time"], unit="s").month
-        seasons = pd.Series(months).map(SEASON_OF_MONTH).to_numpy()
+        seasons = pd.Series(months).map(month_season).to_numpy()
         col = {}
-        for season in SEASON_ORDER:
+        for season in season_order:
             m = (b["target_mask"][:, ti, hi] > 0) & (seasons == season)
             m &= np.isfinite(b["predictions"][:, ti, hi])
             p = unscale(b["predictions"][m, ti, hi], "PM2.5", scalers)
             y = unscale(b["targets"][m, ti, hi], "PM2.5", scalers)
             col[season] = _metrics(p, y)["RMSE"]
         rows[MODEL_LABELS.get(name, name)] = col
-    return pd.DataFrame(rows).reindex(SEASON_ORDER)
+    return pd.DataFrame(rows).reindex(season_order)
 
 
 def seasonal_figure(tbl: pd.DataFrame, figures_dir: Path) -> None:
@@ -251,7 +579,7 @@ def seasonal_figure(tbl: pd.DataFrame, figures_dir: Path) -> None:
     ax.set_ylabel("PM2.5 RMSE at 24 h (µg/m³)")
     ax.set_xlabel("")
     ax.legend(ncol=2, fontsize=8)
-    ax.set_title("Seasonal forecast performance (test year 2024)")
+    ax.set_title("Seasonal forecast performance (test period)")
     plt.setp(ax.get_xticklabels(), rotation=0)
     save_figure(fig, figures_dir, "seasonal_performance")
 
@@ -289,10 +617,14 @@ def example_forecast_figure(
 ) -> None:
     """Actual PM2.5 with gaps shaded + h24 predictions across anchors.
 
-    ``picks``: list of (station, start, end) periods; defaults chosen to show
-    one high-pollution winter period and one gappy monsoon period.
+    ``picks``: list of (station, start, end) periods; defaults to
+    ``cfg["evaluation"]["example_picks"]``, falling back to two Dhaka periods
+    chosen to show one high-pollution winter period and one gappy monsoon
+    period.
     """
     picks = picks or [
+        tuple(p) for p in cfg.get("evaluation", {}).get("example_picks", [])
+    ] or [
         ("Darussalam", "2024-01-05", "2024-02-05"),
         ("Barishal", "2024-07-01", "2024-08-01"),
     ]
@@ -355,7 +687,9 @@ def robustness_figure(cfg: dict, scalers: dict, figures_dir: Path,
                                for m in modes for lv in levels if lv > 0]
         return all((pred_dir / f"{name}_{s}.npz").exists() for s in suffixes)
 
-    candidates = ["proposed", "proposed_md", "two_stage_knn", "two_stage_mice"]
+    rcfg = cfg.get("robustness", {})
+    candidates = list(rcfg.get("direct", ["proposed", "proposed_md"])) + \
+        list(rcfg.get("two_stage", ["two_stage_knn", "two_stage_mice"]))
     models = [m for m in candidates if has_all_bundles(m)]
     if "proposed" not in models:
         logger.warning("robustness: proposed bundles incomplete, skipping figure")
@@ -379,7 +713,10 @@ def robustness_figure(cfg: dict, scalers: dict, figures_dir: Path,
                         values="RMSE").round(2),
         tables_dir, "robustness_rmse",
         "PM2.5 RMSE (\\si{\\micro\\gram\\per\\cubic\\metre}) under additional "
-        "synthetic input missingness: cell-wise MCAR vs station-outage blocks.",
+        "synthetic input missingness: cell-wise MCAR vs station-outage blocks. "
+        "Two-stage pipelines re-impute the corrupted series with imputers fit "
+        "on (uncorrupted) train rows; for SAITS this means reusing the trained "
+        "imputer, transform-only.",
         "tab:robustness", float_format="%.2f",
     )
     fig, axes = plt.subplots(2, 3, figsize=(11, 6.4), sharex=True)
@@ -397,7 +734,7 @@ def robustness_figure(cfg: dict, scalers: dict, figures_dir: Path,
                 ax.set_ylabel(f"{mode_label}\nPM2.5 RMSE (µg/m³)")
             ax.set_xticks([0, 10, 30, 50])
     axes[0, 0].legend(fontsize=8)
-    fig.suptitle("Robustness to additional input missingness (test 2024)")
+    fig.suptitle("Robustness to additional input missingness (test period)")
     fig.tight_layout()
     save_figure(fig, figures_dir, "robustness_curve")
     return tbl
@@ -419,35 +756,53 @@ def run_evaluation(cfg: dict[str, Any]) -> None:
     stations = sorted(df["station"].unique())
     bundles = load_bundles(cfg)
 
-    # Table 2 feedstock: full metrics
-    full = metrics_table(bundles, cfg, scalers)
-    full.to_csv(tables_dir / "metrics_full.csv", index=False)
-    pm25 = full[full["pollutant"] == "PM2.5"].copy()
-    pm25["model"] = pm25["model"].map(lambda m: MODEL_LABELS.get(m, m))
-    main_tbl = pm25.pivot_table(index="model", columns="horizon",
-                                values=["RMSE", "MAE", "R2", "sMAPE"]).round(2)
-    main_tbl = main_tbl.reindex([MODEL_LABELS[m] for m in MODEL_LABELS
-                                 if MODEL_LABELS[m] in main_tbl.index])
-    export_table(main_tbl, tables_dir, "main_results_pm25",
-                 "PM2.5 forecasting performance on the 2024 test year "
-                 "(observed targets only).", "tab:main_results", "%.2f")
+    # Table 2 feedstock: per-seed metrics (long format, seed column)
+    long_df = seed_metrics_long(cfg, scalers)
+    if long_df.empty:
+        logger.warning("no prediction bundles found, skipping main tables")
+    else:
+        long_df.to_csv(tables_dir / "metrics_full.csv", index=False)
+        main_tbl = build_main_results(long_df, cfg)
+        export_table(
+            main_tbl, tables_dir, "main_results_pm25",
+            "PM2.5 forecasting performance on the held-out test period "
+            "(observed targets only). RMSE cells are mean $\\pm$ std over "
+            "training seeds for learned models; persistence, seasonal-naive "
+            "and SARIMA are deterministic single runs. MAE and R$^2$ are "
+            "seed means.", "tab:main_results", "%s")
 
     export_table(pm25_station_table(bundles, cfg, scalers, stations).round(1),
                  tables_dir, "pm25_rmse_by_station",
-                 "PM2.5 RMSE at 24 h per station.", "tab:station_rmse")
+                 "PM2.5 RMSE at 24 h per station (canonical seed).",
+                 "tab:station_rmse")
 
-    if "proposed" in bundles:
-        sig = significance_table(bundles, cfg, scalers)
-        export_table(sig.set_index(["baseline", "horizon"]).round(4),
-                     tables_dir, "significance_dm_bootstrap",
-                     "Diebold--Mariano tests and paired-bootstrap RMSE-difference "
-                     "CIs: proposed vs each baseline (PM2.5; negative = proposed "
-                     "better).", "tab:significance", "%.4f")
+    sig = significance_table_multiseed(cfg, scalers)
+    if not sig.empty:
+        export_table(
+            sig.set_index(["baseline", "horizon"]).round(4),
+            tables_dir, "significance_dm_bootstrap",
+            "Per-seed Diebold--Mariano tests and paired-bootstrap "
+            "RMSE-difference CIs: proposed (seed $i$) vs each baseline "
+            "(seed $i$; statistical baselines are deterministic). Median and "
+            "range of $p$ over seeds; negative RMSE difference = proposed "
+            "better.", "tab:significance", "%.4f")
 
     season_tbl = seasonal_table(bundles, cfg, scalers)
     export_table(season_tbl.round(1), tables_dir, "seasonal_rmse_pm25",
-                 "PM2.5 RMSE at 24 h per Bangladesh season.", "tab:seasonal")
+                 "PM2.5 RMSE at 24 h per season.", "tab:seasonal")
     seasonal_figure(season_tbl, figures_dir)
+
+    ep_tbl = episode_table(cfg, scalers)
+    if not ep_tbl.empty:
+        thr = float(cfg.get("evaluation", {}).get("episode_threshold", 150))
+        export_table(
+            ep_tbl, tables_dir, "episode_rmse_pm25",
+            f"High-pollution-episode PM2.5 RMSE "
+            f"(\\si{{\\micro\\gram\\per\\cubic\\metre}}): test targets with "
+            f"observed PM2.5 $>$ {thr:.0f}. Mean $\\pm$ std over seeds for "
+            "learned models; the subset conditions on observed values, so it "
+            "is identical across models.", "tab:episode", "%s")
+        episode_figure(ep_tbl, cfg, figures_dir)
 
     export_table(efficiency_table(cfg), tables_dir, "efficiency",
                  "CPU efficiency: parameters, wall-clock training time, and "

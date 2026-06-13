@@ -5,14 +5,19 @@
 \toprule
  & Parameters & Train time (min) & Impute time (min) & Latency (ms/window) & Epochs \\
 \midrule
+DLinear & 9378.00 & 0.20 & 0.00 & 0.06 & 12.00 \\
+GRU-D & 69294.00 & 18.70 & 0.00 & 0.53 & 11.00 \\
 GRU & 205202.00 & 6.20 & 0.00 & 0.93 & 11.00 \\
 LSTM & 271250.00 & 3.80 & 0.00 & 0.48 & 14.00 \\
+PatchTST & 410258.00 & 46.20 & 0.00 & 3.37 & 13.00 \\
 Persistence & 0 & 0.00 & 0.00 & 0.02 & - \\
 Proposed (MAT) & 406418.00 & 30.20 & 0.00 & 1.80 & 11.00 \\
 SARIMA & 0 & 3.10 & 0.00 & 32.83 & - \\
 Seasonal-naive & 0 & 0.00 & 0.00 & 0.02 & - \\
 Two-stage (KNN) & 404626.00 & 24.40 & 2.30 & 1.50 & 11.00 \\
 Two-stage (MICE) & 404626.00 & 27.90 & 0.10 & 1.59 & 11.00 \\
+Two-stage (SAITS) & 404626.00 & 23.30 & 5.60 & 1.41 & 11.00 \\
+Proposed (variant B) & 406418.00 & 24.60 & 0.00 & NaN & 11.00 \\
 \bottomrule
 \end{tabular}
 \end{table}

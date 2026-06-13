@@ -1,0 +1,74 @@
+{
+  "name": "two_stage_saits",
+  "seed": 44,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\\air-transformer\\outputs\\checkpoints\\two_stage_saits_seed44.pt",
+  "best_val_loss": 0.6801338443348767,
+  "best_epoch": 4,
+  "epochs_run": 12,
+  "train_time_s": 1519.8,
+  "n_parameters": 404626,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.5379641445018875,
+      "val": 0.7068085905739978
+    },
+    {
+      "epoch": 1,
+      "train": 0.4191312763115686,
+      "val": 0.7319672244547606
+    },
+    {
+      "epoch": 2,
+      "train": 0.39703831714067594,
+      "val": 0.714442429820319
+    },
+    {
+      "epoch": 3,
+      "train": 0.38196640590332354,
+      "val": 0.7223693715017994
+    },
+    {
+      "epoch": 4,
+      "train": 0.37166634280953936,
+      "val": 0.6801338443348767
+    },
+    {
+      "epoch": 5,
+      "train": 0.36196997235993866,
+      "val": 0.6940474429173075
+    },
+    {
+      "epoch": 6,
+      "train": 0.34977266509853,
+      "val": 0.7045404084730177
+    },
+    {
+      "epoch": 7,
+      "train": 0.33976246876031757,
+      "val": 0.8205009404727599
+    },
+    {
+      "epoch": 8,
+      "train": 0.3321362994906871,
+      "val": 0.7901423694587885
+    },
+    {
+      "epoch": 9,
+      "train": 0.3213948366711877,
+      "val": 0.7763410995357007
+    },
+    {
+      "epoch": 10,
+      "train": 0.31160838010159797,
+      "val": 0.7415993481905563
+    },
+    {
+      "epoch": 11,
+      "train": 0.30239608203117185,
+      "val": 0.7800953453460395
+    }
+  ],
+  "impute_time_s": 335.4,
+  "latency_ms_per_window": 1.4286151846534076
+}

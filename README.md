@@ -7,46 +7,74 @@ Data from Bangladesh."*
 An end-to-end Transformer forecasts pollutants (primary target PM2.5; also
 PM10, NO2, O3, CO, SO2) **directly from incomplete sensor streams** using
 learned missingness embeddings and masked attention — no imputation stage —
-and is compared against the conventional two-stage pipeline (impute with
-KNN/MICE, then forecast) plus statistical and RNN baselines.
+and is compared against impute-then-forecast pipelines (KNN, MICE, and the
+deep imputer **SAITS**), the missingness-native **GRU-D** RNN, modern
+forecasters (**DLinear**, **PatchTST**), and statistical baselines.
+
+**The claim is parity-plus-deployability, not raw accuracy:** end-to-end
+missingness-aware forecasting *matches* the strong impute-then-forecast
+pipelines — including a deep imputer — at every horizon while removing the
+imputation stage; with missingness dropout it degrades most gracefully under
+the *realistic* station-outage missingness mechanism and is best on
+high-pollution episodes.
 
 **Everything runs on a desktop CPU**: small models (d_model 128, 3 layers,
-~406k parameters), vanilla PyTorch, fixed seeds, deterministic flags. The
-entire experimental grid (8 baselines, 25 ablation runs, two robustness
-suites) trains in under a day on CPU — framed as deployability for
-resource-constrained monitoring networks.
+~406k parameters), vanilla PyTorch, fixed seeds, deterministic flags. All
+learned models are trained with **3 seeds (42/43/44)** and reported as
+**mean ± std** — no single-seed number is ever reported where a multi-seed
+one exists.
 
 ## Headline results
 
-PM2.5 test RMSE (µg/m³) on the held-out 2024 year (observed targets only):
+PM2.5 test RMSE (µg/m³) on the held-out 2024 year, observed targets only,
+**3-seed mean ± std** for learned models (statistical baselines are
+deterministic single runs):
 
 | Model | 6 h | 24 h | 72 h |
 |---|---|---|---|
 | Persistence | 93.9 | 99.0 | 105.1 |
-| Seasonal-naive | 90.6 | 93.7 | 102.2 |
 | SARIMA (per station) | 80.0 | 83.9 | 86.7 |
-| LSTM | 68.0 | 77.9 | 79.9 |
-| GRU | 67.3 | 76.3 | 79.2 |
-| Two-stage (KNN → Transformer) | 67.0 | 75.6 | 80.2 |
-| Two-stage (MICE → Transformer) | 67.3 | 76.0 | 79.7 |
-| **Proposed (MAT)** | 66.8 | 77.1 | 80.7 |
-| **Proposed + missingness dropout** | **66.2** | 77.3 | 80.5 |
+| LSTM | 68.20 ± 0.34 | 78.05 ± 0.08 | 80.95 ± 0.79 |
+| GRU | 67.69 ± 0.47 | 76.45 ± 0.20 | **79.58 ± 0.37** |
+| GRU-D | 68.89 ± 0.31 | 76.69 ± 0.49 | 80.61 ± 0.24 |
+| DLinear | 70.51 ± 0.72 | 80.90 ± 1.34 | 83.55 ± 0.40 |
+| PatchTST | 74.61 ± 1.07 | 84.34 ± 1.14 | 87.51 ± 1.34 |
+| Two-stage (KNN → Transformer) | **66.95 ± 0.58** | 76.42 ± 0.75 | 80.95 ± 1.52 |
+| Two-stage (MICE → Transformer) | 67.39 ± 0.25 | 76.81 ± 0.68 | 80.66 ± 1.13 |
+| Two-stage (SAITS → Transformer) | 67.22 ± 0.82 | 76.31 ± 0.40 | 81.43 ± 1.15 |
+| **Proposed (MAT)** | 67.03 ± 0.28 | 76.46 ± 0.51 | 81.54 ± 1.29 |
+| **Proposed (variant B)** | 67.04 ± 0.29 | **76.00 ± 0.51** | 80.26 ± 1.36 |
+| **Proposed + missingness dropout** | 67.48 ± 0.88 | 79.69 ± 1.77 | 81.54 ± 0.91 |
 
-- The proposed model **matches the strong two-stage pipeline on natural data**
-  (Diebold–Mariano: no significant difference at 2 of 3 horizons) while
-  eliminating the imputation stage entirely (1.6 ms/window inference vs
-  minutes of re-imputation per data refresh).
-- Under **additional synthetic missingness** (both cell-wise MCAR and
-  station-outage blocks), the missingness-dropout variant is best at every
-  corruption level at the 6 h horizon with the flattest degradation slope
-  (+2.1 µg/m³ at +50% missingness vs +3.2 for two-stage KNN).
-- **Attention analysis shows why**: in PM2.5-sparse windows, 70.6% of the
-  forecast token's attention mass shifts to timesteps where only meteorology
-  is observed; attention exhibits learned 24 h periodicity.
+- **Accuracy parity, established honestly.** The proposed model, variant B,
+  and all three two-stage pipelines (KNN, MICE, SAITS) sit inside each other's
+  ±std at every horizon; per-seed Diebold–Mariano finds **no significant
+  difference** against any of them. (A previously reported "two-stage KNN
+  beats us at h24, p = 0.042" was a seed-42 artifact: across seeds
+  p = 0.038 / 0.042 / 0.891. See [`outputs/RESULTS.md`](outputs/RESULTS.md).)
+- **Robustness splits by mechanism — and we report both halves.** Under
+  realistic **station-outage** corruption, the missingness-dropout variant has
+  the flattest h6 degradation slope (+2.0 µg/m³ at +50%) and the lowest RMSE
+  there (68.3), beating two-stage SAITS (+3.9) and KNN (+3.5). Under idealized
+  **cell-wise MCAR**, two-stage **SAITS is the most robust** (essentially flat)
+  — the deep imputer handles MCAR's intact cross-section well, so for that
+  mechanism an impute-then-forecast pipeline is the better choice.
+- **High-pollution episodes** (observed PM2.5 > 150 µg/m³): proposed +
+  missingness dropout is best at 6 h (130.2) and 24 h (125.3).
+- **Strong baselines, not strawmen.** GRU-D (missingness-native RNN) does *not*
+  beat the proposed transformer; PatchTST and DLinear are clearly behind and
+  collapse under corruption — the parity result is against genuinely strong
+  competitors, including a quality-gated deep imputer.
+- **Deployability** is the practical edge: the two-stage pipelines re-impute on
+  every data refresh (SAITS imputer fit 5.6 min; re-imputation at inference);
+  the end-to-end model runs at 1.8 ms/window with no imputation stage.
 
-Full consolidated numbers: [`outputs/RESULTS.md`](outputs/RESULTS.md).
+Full consolidated numbers and the frank robustness assessment:
+[`outputs/RESULTS.md`](outputs/RESULTS.md).
 All tables (CSV + booktabs LaTeX) in [`outputs/tables/`](outputs/tables/),
 all figures (300-dpi PNG + vector PDF) in [`outputs/figures/`](outputs/figures/).
+A second monitoring network (Beijing Multi-Site, UCI) is wired into the same
+pipeline as an external-validity check; see [`COLAB.md`](COLAB.md).
 
 ## Data
 
@@ -85,22 +113,31 @@ for every path, hyperparameter, seed, bound, and ablation switch.
 python scripts/01_prepare_data.py         --config config.yaml  # xlsx -> parquet + cleaning report
 python scripts/02_missingness_analysis.py --config config.yaml  # missingness tables + figures
 python -m src.data.dataset                --config config.yaml  # windows, scalers, count tables
-python scripts/03_train_baselines.py      --config config.yaml  # 7 baselines
-python scripts/04_train_proposed.py       --config config.yaml  # the proposed model
-python scripts/05_ablations.py            --config config.yaml  # 9 variants x 3 seeds + robustness
+python scripts/03_train_baselines.py      --config config.yaml  # baselines x 3 seeds (--seeds 42,43,44)
+python scripts/04_train_proposed.py       --config config.yaml --seeds 42,43,44          # proposed
+python scripts/04_train_proposed.py       --config config.yaml --seeds 42,43,44 --variant B --name variant_B
+python scripts/04_train_proposed.py       --config config.yaml --seeds 42,43,44 --miss-dropout
+python scripts/05_ablations.py            --config config.yaml  # ablations + robustness suite
+python scripts/05_ablations.py            --config config.yaml --export-seed-predictions  # per-seed bundles
 python scripts/06_interpretability.py     --config config.yaml  # attention + importance
 python scripts/07_make_paper_assets.py    --config config.yaml  # regenerate ALL tables + figures
 python -m src.evaluate                    --config config.yaml  # metrics + significance tests
 ```
 
-Long runs checkpoint incrementally (`outputs/ablation_results.json`,
-prediction bundles) and **resume automatically** — re-running script 05
-skips everything already completed.
+Learned models train with three seeds; per-seed prediction bundles land in
+`outputs/predictions/seeds/`, the canonical seed-42 bundle stays at the top
+level. Every (model, seed) run is skipped when its bundle already exists, so
+all long runs **resume automatically**. The second dataset runs the identical
+pipeline via `--config config_beijing.yaml` (training on Colab T4 — see
+[`COLAB.md`](COLAB.md)); script 07 gains `--secondary-config config_beijing.yaml`
+for the cross-dataset summary table.
 
 ```bash
-python -m pytest tests/    # 47 tests: unit-row stripping, mask/leakage
-                           # contracts, scaler-on-train-only, model shapes,
-                           # corruption determinism, ...
+python -m pytest tests/    # 82 tests: unit-row stripping, mask/leakage
+                           # contracts, scaler-on-train-only, model shapes +
+                           # determinism + mask-poisoning for every new model,
+                           # multi-seed aggregation, per-seed significance,
+                           # SAITS imputer, Beijing loader, ...
 ```
 
 ## Train / validation / test split
@@ -140,25 +177,36 @@ x = value_proj(values) + miss_proj(1 - mask) + time_proj(time_feats)
 `miss_proj` is a learned per-variable missingness embedding (so "absent" is
 distinguishable from "measured zero"). The encoder is a vanilla pre-norm
 `nn.TransformerEncoder` (3 layers, d_model 128, 8 heads, FFN 256). Variant B
-(config switch, best in ablations at 24/72 h) additionally masks attention
-to timesteps where the primary target is unobserved. Multi-horizon linear
-heads; masked-MSE loss over observed targets only. The two-stage baseline
-uses a size-identical vanilla Transformer on imputed inputs, isolating the
-contribution of native missingness handling.
+(config switch, significantly best at h72) additionally masks attention to
+timesteps where the primary target is unobserved. Multi-horizon linear heads;
+masked-MSE loss over observed targets only. The two-stage baselines use a
+size-identical vanilla Transformer on inputs imputed by KNN, MICE, or SAITS
+(a deep self-attention imputer trained on train-period rows only), isolating
+the contribution of native missingness handling.
+
+Baselines live in `src/models/` behind a unified `forward(batch) -> (B, T, H)`
+contract and a name registry (`src/models/factory.py`): the missingness-native
+**GRU-D** (Che et al. 2018; learned input/hidden decay), **DLinear** (Zeng et
+al. 2023), **PatchTST** (Nie et al. 2023), the **SAITS** imputer (Du et al.
+2023, minimal in-repo implementation), LSTM/GRU, and persistence /
+seasonal-naive / SARIMA.
 
 ## Repository layout
 
 ```
 config.yaml                  # single source of truth for ALL hyperparameters
-src/data/                    # load, clean, dataset/windowing, impute
-src/models/                  # proposed model + all baselines
-src/train.py                 # unified training loop (early stop, checkpoints)
-src/evaluate.py              # metrics, DM tests, bootstrap, figures
+config_beijing.yaml          # second dataset, same pipeline (outputs/beijing/)
+src/data/                    # load, clean, dataset/windowing, impute, load_beijing
+src/models/                  # proposed model + all baselines + factory
+src/train.py                 # unified training loop (early stop, checkpoints, device)
+src/evaluate.py              # metrics, multi-seed tables, per-seed DM, episode, figures
 src/interpret.py             # attention extraction + feature importance
-scripts/01..07_*.py          # one CLI per pipeline stage
-tests/                       # 47 unit tests
+scripts/01..07_*.py          # one CLI per pipeline stage (+ 01b_prepare_beijing)
+scripts/colab_run_beijing.py # one-command Beijing grid for Colab T4 (see COLAB.md)
+tests/                       # 82 unit tests
 outputs/                     # RESULTS.md, tables/, figures/, checkpoints/,
-                             # predictions/, cleaning + analysis reports
-data/raw/                    # the 3 source xlsx files
-data/processed/              # cleaned parquet + scalers
+                             # predictions/ (+ predictions/seeds/), reports
+UPGRADE_LOG.md               # change log: what ran, wall-clock, contradictions
+data/raw/                    # the 3 source xlsx files (+ raw/beijing/ CSVs)
+data/processed/              # cleaned parquet + scalers (per dataset)
 ```

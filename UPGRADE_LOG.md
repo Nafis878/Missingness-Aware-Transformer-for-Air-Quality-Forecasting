@@ -1,0 +1,42 @@
+# Upgrade Log
+
+Running log of the Q1-reviewer upgrade (multi-seed results, modern baselines,
+Beijing dataset, metrics + framing). Every entry records what was changed,
+what was run, wall-clock time, and any result that contradicts the previous
+narrative.
+
+Conventions
+- Per-seed prediction bundles: `outputs/predictions/seeds/{model}_s{seed}_test.npz`
+  (all seeds incl. 42); the canonical seed-42 bundle stays at the top level as
+  `{model}_test.npz` so existing figure/robustness code is untouched.
+- Significance: per-seed Diebold-Mariano (proposed seed *i* vs baseline seed *i*),
+  reporting median p, min-max range, and an all-seeds-significant flag.
+  Rationale: averaging predictions over seeds would test a 3-member ensemble
+  nobody deploys and asymmetrically flatter learned models vs the single-run
+  statistical baselines; per-seed pairing keeps DM's paired time-series
+  structure and surfaces fragile results.
+- SAITS: minimal in-repo implementation (`src/models/saits.py`), not pypots
+  (pypots 1.5 pulls ~10 transitive deps incl. transformers/tsdb/benchpots into
+  a pinned-requirements repo and runs its own training loop outside this
+  repo's determinism/train-only-fit contracts).
+- Phase 3 (Beijing) training runs on Google Colab T4 per user decision
+  (~19-20 h CPU estimate exceeded the 8 h/phase limit; ~2-4 h on T4).
+  GPU-trained results are not bit-identical to CPU runs at the same seed;
+  noted wherever Beijing numbers are reported.
+
+## Run log
+
+| date | phase | command | wall-clock | artifacts | notes / contradictions |
+|---|---|---|---|---|---|
+| 2026-06-12 | 0 | pytest (after device/season/seed-helper plumbing) | 3 s | — | 47/47 pass, no behavior change on CPU |
+| 2026-06-12 | 1 | `05_ablations.py --export-seed-predictions` | 1.3 min | `predictions/seeds/{proposed,variant_B,proposed_md}_s{42,43,44}_test.npz`, `variant_B_test.npz`, `variant_B_stats.json` | inference-only from existing ablation checkpoints |
+| 2026-06-12 | 1 | `03_train_baselines.py` (lstm/gru/knn/mice, seeds 43+44; seed-42 artifacts auto-skipped) | (background, ~2.2 h est) | per-seed checkpoints + `seeds/` bundles | running |
+| 2026-06-13 | 3 | `01b_prepare_beijing.py` (UCI download 49 MB + clean) | ~1 min | `data/processed/beijing/all_stations.parquet` (420,768 rows, 12 stations), cleaning report | Beijing natural missingness is LOW: PM2.5 2.1%, PM10 1.6%, O3 4.2%, CO 5.3% (vs Dhaka PM2.5 23.4%). On natural Beijing data, missingness-aware vs two-stage differences are expected to be small; the synthetic-corruption robustness suite is where the mechanism is exercised. Beijing = external-validity check, not a second showcase. |
+| 2026-06-13 | 3 | Beijing window counts via `make_datasets(config_beijing.yaml)` | <1 min | scalers.json | train 11,920 / val 1,068 / test 4,356 windows; val count healthy for early stopping |
+| 2026-06-13 | 2+4 | pytest after new models (DLinear/PatchTST/GRU-D/SAITS + factory) + multiseed/episode/Beijing tests | 10 s | — | 82/82 pass (47 original + 35 new) |
+| 2026-06-13 | 1 | `03_train_baselines.py` (background) finished: lstm 43/44 (3.5/2.9 min), gru 43/44 (5.8/5.4 min), knn 43/44 (41/31 min), mice 43/44 (28/21 min) | 2.2 h total | per-seed checkpoints, stats, `seeds/` bundles | — |
+| 2026-06-13 | 1 | `07_make_paper_assets.py --skip-interpretability` (interim, Phase-2 models still training) | 2 min | multi-seed `main_results_pm25`, per-seed `significance_dm_bootstrap`, `metrics_full.csv` (long, per-seed), `episode_rmse_pm25` | **CONTRADICTION: the published h24 claim "two-stage KNN significantly better than proposed (p = 0.042, +1.54)" did NOT replicate across seeds.** Per-seed DM at h24: p = 0.038 / 0.042 / 0.891, mean RMSE diff +0.04 — a seed-42 artifact. With 3 seeds, KNN h24 = 76.42 ± 0.75 vs proposed 76.46 ± 0.51: statistical parity at every horizon vs every learned baseline. Also: variant B is significantly better than plain proposed at h72 (all seeds, p median 0.006); proposed significantly better than miss-dropout at h24 on clean data (2 of 3 seeds, diff −3.2) — the robustness/accuracy tradeoff is real and must be framed as such. |
+| 2026-06-13 | 2 | `03_train_baselines.py` (dlinear/gru_d/patchtst/two_stage_saits × 3 seeds) | ~5 h | per-seed checkpoints + bundles; SAITS imputer checkpoints | dlinear ~15 s/run, gru_d ~18 min/run, patchtst ~45 min/run, saits-pipeline ~30 min/run. **SAITS quality gate PASSED all 3 seeds** (val MIT-MAE 0.170–0.173 vs ffill 0.192 → the deep imputer is a legitimate strong competitor, not a strawman). |
+| 2026-06-13 | 2 | `05_ablations.py --robustness` (GRU-D/DLinear/PatchTST/SAITS added) | ~2 h | 48 robustness bundles (`{model}_test_{miss,out}{10,30,50}.npz`, seed 42) | re-imputation cost: SAITS ~1.1 s/level (transform-only), KNN ~140 s, MICE ~30 s. |
+| 2026-06-13 | 4 | README.md + outputs/RESULTS.md rewritten (parity-plus-deployability framing); stale-number audit (grep vs CSVs, clean); pytest | 5 s | docs | 82/82 pass; no single-seed number remains where multi-seed exists; cross-dataset table deferred until Beijing artifacts present (Colab). |
+| 2026-06-13 | 2/4 | `07_make_paper_assets.py --skip-interpretability` (full, all models) | 2 min | all Dhaka tables/figures refreshed incl. `robustness_rmse`, `episode_rmse_pm25` | **DECISIVE robustness finding (seed 42, h6):** (1) under cell-wise **MCAR**, two-stage **SAITS is the most robust AND most accurate** (66.1→66.1, slope +0.04) — beats miss-dropout (slope +2.06) and plain proposed (+5.90). MCAR leaves the same-timestep cross-section intact, the easy case for an attention imputer. **Honest loss under MCAR, reported.** (2) Under realistic **station-outage** corruption (the dominant real mechanism: co-missingness 0.38, 39% of gaps >7 days), **miss-dropout has the flattest slope (+2.04) and the lowest RMSE at +50% (68.28)**, beating SAITS (+3.90, 69.97) and KNN (+3.47, 70.48). The claim survives where it matters. (3) **GRU-D does NOT beat the proposed transformer** (68.89 vs 67.03 h6 clean; worst h6 outage slope +5.01 among neural models). (4) **PatchTST is the worst learned model** and degrades catastrophically (+12.5 MCAR, +8.9 outage) — channel-independent patching is ill-suited to heavy multivariate missingness. (5) Episodes (>150 µg/m³): proposed+miss-dropout best at h6 (130.2) and h24 (125.3). |

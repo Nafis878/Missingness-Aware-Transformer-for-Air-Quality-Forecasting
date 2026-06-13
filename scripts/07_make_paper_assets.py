@@ -50,7 +50,8 @@ def _import_script(name: str):
 def table1_dataset_summary(cfg: dict) -> None:
     """Table 1: stations, coverage, observations, missingness for key vars."""
     df = pd.read_parquet(Path(cfg["paths"]["processed_dir"]) / "all_stations.parquet")
-    key_vars = ["PM2.5", "PM10", "NO2", "O3", "CO", "SO2", "Temp", "RH"]
+    key_vars = [v for v in ("PM2.5", "PM10", "NO2", "O3", "CO", "SO2",
+                            "Temp", "RH", "TEMP", "PRES") if v in df.columns]
     rows = []
     for st, grp in df.groupby("station"):
         rows.append({
@@ -67,7 +68,7 @@ def table1_dataset_summary(cfg: dict) -> None:
                         round(df[key_vars].isna().to_numpy().mean() * 100, 1)]
     export_table(tbl, Path(cfg["paths"]["tables_dir"]), "table1_dataset_summary",
                  "Dataset summary: per-station hourly coverage and missingness "
-                 "after cleaning (2022--2024, 16 stations).", "tab:dataset", "%.1f")
+                 "after cleaning.", "tab:dataset", "%.1f")
 
 
 def table3_ablations(cfg: dict) -> None:
@@ -104,6 +105,9 @@ def table3_ablations(cfg: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default=None)
+    parser.add_argument("--secondary-config", default=None,
+                        help="second dataset config (e.g. config_beijing.yaml) "
+                             "for the cross-dataset summary table")
     parser.add_argument("--skip-interpretability", action="store_true",
                         help="skip re-running attention extraction (slow-ish)")
     args = parser.parse_args()
@@ -130,12 +134,25 @@ def main() -> None:
                            Path(cfg["paths"]["figures_dir"]))
 
     # Table 2, 4 + evaluation figures (incl. robustness + example forecasts)
-    from src.evaluate import run_evaluation
+    from src.evaluate import cross_dataset_table, run_evaluation
 
     run_evaluation(cfg)
 
-    # Attention/importance figures
-    if not args.skip_interpretability:
+    if args.secondary_config:
+        secondary_cfg = load_config(args.secondary_config)
+        tbl, ds_stats = cross_dataset_table(cfg, secondary_cfg)
+        export_table(
+            tbl, Path(cfg["paths"]["tables_dir"]), "cross_dataset_summary",
+            "Cross-dataset summary (PM2.5): test RMSE at 24 h (mean $\\pm$ std "
+            "over seeds for learned models) and RMSE degradation at 6 h under "
+            "+50\\% station-outage corruption. " + ds_stats + ".",
+            "tab:cross_dataset", "%s")
+
+    # Attention/importance figures (needs the trained proposed checkpoint)
+    proposed_ckpt = Path(cfg["paths"]["checkpoints_dir"]) / f"proposed_seed{cfg['seed']}.pt"
+    if not args.skip_interpretability and not proposed_ckpt.exists():
+        logger.warning("no %s — skipping interpretability figures", proposed_ckpt.name)
+    elif not args.skip_interpretability:
         m06 = _import_script("06_interpretability")
         sys.argv = ["06_interpretability"] + (
             ["--config", args.config] if args.config else []

@@ -130,7 +130,65 @@ baselines:
     knn_fit_subsample: 5000      # KNN transform is O(n_fit x n_query); documented
     mice_max_iter: 10
     mice_fit_subsample: 50000
+  dlinear:                   # Zeng et al. 2023, "individual" variant
+    kernel_size: 25          # moving-average trend window (odd)
+    station_bias: true
+  patchtst:                  # Nie et al. 2023, CPU-friendly scale = proposed
+    patch_len: 16
+    stride: 8
+    d_model: 128
+    n_layers: 3
+    n_heads: 8
+    d_ff: 256
+    dropout: 0.1
+  gru_d:                     # Che et al. 2018, faithful single-layer
+    hidden_size: 128
+    dropout: 0.1
+  saits:                     # Du et al. 2023, minimal in-repo imputer
+    d_model: 64
+    n_heads: 4
+    d_ff: 128
+    n_layers_per_group: 1
+    dropout: 0.1
+    epochs: 30
+    patience: 5
+    batch_size: 64
+    lr: 1.0e-3
+    mit_rate: 0.2            # fraction of observed cells re-masked per batch (MIT)
+    segment_len: 168
+    segment_stride: 84
+
+# Models evaluated in the robustness suites (scripts/05 --robustness).
+# direct = consume the corrupted inputs natively; two_stage = re-impute first.
+robustness:
+  direct: [proposed, proposed_md, gru_d, dlinear, patchtst]
+  two_stage: [two_stage_knn, two_stage_mice, two_stage_saits]
 
 ablation:
   seeds: [42, 43, 44]
   sequence_lengths: [72, 168, 336]
+
+evaluation:
+  # Hours that matter operationally: RMSE restricted to test targets whose
+  # OBSERVED PM2.5 exceeds this threshold (ug/m3). Same constant on every
+  # dataset for cross-dataset comparability.
+  episode_threshold: 150
+  # Month -> season mapping used by the seasonal tables/figures.
+  seasons:
+    12: Winter
+    1: Winter
+    2: Winter
+    3: Pre-monsoon
+    4: Pre-monsoon
+    5: Pre-monsoon
+    6: Monsoon
+    7: Monsoon
+    8: Monsoon
+    9: Monsoon
+    10: Post-monsoon
+    11: Post-monsoon
+  season_order: [Winter, Pre-monsoon, Monsoon, Post-monsoon]
+  # (station, start, end) periods for the example-forecast figure.
+  example_picks:
+    - [Darussalam, "2024-01-05", "2024-02-05"]
+    - [Barishal, "2024-07-01", "2024-08-01"]

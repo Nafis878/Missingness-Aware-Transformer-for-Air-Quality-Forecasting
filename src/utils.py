@@ -10,6 +10,7 @@ Every script in this project uses these three entry points:
 from __future__ import annotations
 
 import logging
+import os
 import random
 import sys
 from datetime import datetime
@@ -84,15 +85,39 @@ def seed_everything(seed: int, num_threads: int | None = None) -> None:
     """
     random.seed(seed)
     np.random.seed(seed)
+    # Required for deterministic cuBLAS matmuls on GPU; harmless on CPU. Must
+    # be set before the first CUDA kernel launch, hence here.
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     try:
         import torch
 
         torch.manual_seed(seed)
+        if torch.cuda.is_available():  # pragma: no cover - CPU-only CI
+            torch.cuda.manual_seed_all(seed)
         torch.use_deterministic_algorithms(True)
         if num_threads:
             torch.set_num_threads(num_threads)
     except ImportError:  # pragma: no cover - torch is a hard dependency in practice
         pass
+
+
+#: Bangladesh meteorological seasons (defaults when the config has no
+#: ``evaluation.seasons`` block; Beijing overrides with calendar seasons).
+DEFAULT_SEASON_OF_MONTH = {
+    12: "Winter", 1: "Winter", 2: "Winter",
+    3: "Pre-monsoon", 4: "Pre-monsoon", 5: "Pre-monsoon",
+    6: "Monsoon", 7: "Monsoon", 8: "Monsoon", 9: "Monsoon",
+    10: "Post-monsoon", 11: "Post-monsoon",
+}
+DEFAULT_SEASON_ORDER = ["Winter", "Pre-monsoon", "Monsoon", "Post-monsoon"]
+
+
+def season_map(cfg: dict[str, Any]) -> tuple[dict[int, str], list[str]]:
+    """Month -> season mapping and display order, config-driven per dataset."""
+    ev = cfg.get("evaluation", {})
+    mapping = {int(k): v for k, v in ev.get("seasons", DEFAULT_SEASON_OF_MONTH).items()}
+    order = list(ev.get("season_order", DEFAULT_SEASON_ORDER))
+    return mapping, order
 
 
 def peak_memory_mb() -> float | None:

@@ -1,0 +1,63 @@
+{
+  "name": "gru_d",
+  "seed": 44,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\\air-transformer\\outputs\\checkpoints\\gru_d_seed44.pt",
+  "best_val_loss": 0.6830025643750217,
+  "best_epoch": 2,
+  "epochs_run": 10,
+  "train_time_s": 993.8,
+  "n_parameters": 69294,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.5794963514127399,
+      "val": 0.7295832554327184
+    },
+    {
+      "epoch": 1,
+      "train": 0.43254981447826085,
+      "val": 0.7032626692067163
+    },
+    {
+      "epoch": 2,
+      "train": 0.4094450938063791,
+      "val": 0.6830025643750217
+    },
+    {
+      "epoch": 3,
+      "train": 0.3959853258557936,
+      "val": 0.7010505419639604
+    },
+    {
+      "epoch": 4,
+      "train": 0.38651637376259146,
+      "val": 0.6931533865134303
+    },
+    {
+      "epoch": 5,
+      "train": 0.3758869219655962,
+      "val": 0.6915034707624389
+    },
+    {
+      "epoch": 6,
+      "train": 0.3682246129594349,
+      "val": 0.695588846310987
+    },
+    {
+      "epoch": 7,
+      "train": 0.36220169516102824,
+      "val": 0.7103584797471783
+    },
+    {
+      "epoch": 8,
+      "train": 0.35617642479956335,
+      "val": 0.7126693781679083
+    },
+    {
+      "epoch": 9,
+      "train": 0.3488714594148565,
+      "val": 0.7104420903659946
+    }
+  ],
+  "latency_ms_per_window": 0.51085740408755
+}

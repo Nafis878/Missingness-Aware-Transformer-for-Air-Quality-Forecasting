@@ -152,51 +152,137 @@ def run_ablations(base_cfg: dict, variants: list[str]) -> None:
             logger.info("ablation %s %s: %s", variant, key, rmse)
 
 
-def run_robustness(base_cfg: dict) -> None:
+def export_seed_predictions(base_cfg: dict) -> None:
+    """Per-seed test prediction bundles for the proposed-model family.
+
+    The ablation runner already trained ``full``, ``variant_B`` and
+    ``miss_dropout`` with all seeds but stored only their RMSE numbers; the
+    multi-seed main tables and per-seed DM tests need the full bundles. This
+    re-runs inference from the existing checkpoints (no training) and writes
+    ``predictions/seeds/{alias}_s{seed}_test.npz``. The seed-42 ``variant_B``
+    bundle is also written top-level (it was never exported by scripts 03/04)
+    together with a ``variant_B_stats.json`` for the efficiency table.
+    """
+    import shutil
+
     import torch
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     builder = __import__("04_train_proposed")
 
-    from src.data.dataset import AirQualityWindowDataset, load_scalers, make_datasets
+    from src.data.dataset import make_datasets
+    from src.train import predict, save_predictions
+
+    # ablation variant -> (bundle alias, build kwargs)
+    aliases = {"full": "proposed", "variant_B": "variant_B",
+               "miss_dropout": "proposed_md"}
+    pred_dir = Path(base_cfg["paths"]["predictions_dir"])
+    ckpt_dir = Path(base_cfg["paths"]["checkpoints_dir"])
+    datasets, stations, _ = make_datasets(base_cfg)
+
+    for variant, alias in aliases.items():
+        cfg, kwargs, _ = variant_setup(variant, base_cfg)
+        for seed in base_cfg["ablation"]["seeds"]:
+            canonical = seed == base_cfg["seed"]
+            seed_path = pred_dir / "seeds" / f"{alias}_s{seed}_test.npz"
+            top_path = pred_dir / f"{alias}_test.npz"
+            if seed_path.exists() and (not canonical or top_path.exists()):
+                logger.info("%s seed %d: bundles exist, skipping", alias, seed)
+                continue
+            if canonical and top_path.exists() and not seed_path.exists():
+                seed_path.parent.mkdir(parents=True, exist_ok=True)
+                seed_path.write_bytes(top_path.read_bytes())
+                logger.info("backfilled %s from %s", seed_path.name, top_path.name)
+                continue
+            ckpt = ckpt_dir / f"abl_{variant}_s{seed}_seed{seed}.pt"
+            if variant == "full" and (ckpt_dir / f"proposed_seed{seed}.pt").exists():
+                ckpt = ckpt_dir / f"proposed_seed{seed}.pt"
+            if not ckpt.exists():
+                logger.warning("%s seed %d: no checkpoint (%s), skipping",
+                               alias, seed, ckpt.name)
+                continue
+            model = builder.build_proposed(cfg, n_stations=len(stations), **kwargs)
+            model.load_state_dict(
+                torch.load(ckpt, weights_only=False)["model_state"]
+            )
+            out = predict(model, datasets["test"], cfg)
+            save_predictions(out, cfg, f"{alias}_s{seed}", subdir="seeds")
+            if canonical and not top_path.exists():
+                save_predictions(out, cfg, alias)
+
+    # stats json so variant_B shows up in the efficiency table
+    vb_stats_src = ckpt_dir / "abl_variant_B_s42_stats.json"
+    vb_stats_dst = ckpt_dir / "variant_B_stats.json"
+    if vb_stats_src.exists() and not vb_stats_dst.exists():
+        stats = json.loads(vb_stats_src.read_text(encoding="utf-8"))
+        stats["name"] = "variant_B"
+        vb_stats_dst.write_text(json.dumps(stats, indent=2), encoding="utf-8")
+        logger.info("wrote %s (copied from %s)", vb_stats_dst.name, vb_stats_src.name)
+
+
+def run_robustness(base_cfg: dict) -> None:
+    import torch
+
+    from src.data.dataset import (
+        AirQualityWindowDataset,
+        feature_columns,
+        load_scalers,
+        make_datasets,
+    )
     from src.data.impute import (
         corrupt_test_inputs,
         corrupt_test_outages,
         impute_full_series,
         replace_inputs,
     )
-    from src.models.vanilla_transformer import VanillaTransformer
-    from src.data.dataset import feature_columns
+    from src.models.factory import build_model
     from src.train import predict, save_predictions
 
     cfg = base_cfg
     seed = cfg["seed"]
     datasets, stations, _ = make_datasets(cfg)
-    n_feat = len(feature_columns(cfg))
+    feats = feature_columns(cfg)
+    n_feat = len(feats)
     n_t = len(cfg["dataset"]["target_pollutants"])
     n_h = len(cfg["dataset"]["horizons"])
+    t_feat_idx = feats.index(cfg["dataset"]["primary_target"])
+    t_indices = [feats.index(p) for p in cfg["dataset"]["target_pollutants"]]
     ckpt_dir = Path(cfg["paths"]["checkpoints_dir"])
+    rcfg = cfg.get("robustness", {
+        "direct": ["proposed", "proposed_md"],
+        "two_stage": ["two_stage_knn", "two_stage_mice"],
+    })
 
-    proposed = builder.build_proposed(cfg, n_stations=len(stations))
-    proposed.load_state_dict(torch.load(
-        ckpt_dir / f"proposed_seed{seed}.pt", weights_only=False)["model_state"])
-    models_direct = {"proposed": proposed}
+    def build(name: str):
+        return build_model(name, cfg, n_feat, len(stations), n_t, n_h,
+                           target_feature_idx=t_feat_idx, target_indices=t_indices)
 
-    # proposed + training-time missingness dropout (ablation variant), if trained
-    md_ckpt = ckpt_dir / f"abl_miss_dropout_s{seed}_seed{seed}.pt"
-    if md_ckpt.exists():
-        md = builder.build_proposed(cfg, n_stations=len(stations))
-        md.load_state_dict(torch.load(md_ckpt, weights_only=False)["model_state"])
-        models_direct["proposed_md"] = md
-        clean_path = Path(cfg["paths"]["predictions_dir"]) / "proposed_md_test.npz"
+    models_direct = {}
+    for name in rcfg["direct"]:
+        # proposed_md may come from script 04 (--miss-dropout, e.g. Beijing)
+        # or from the miss_dropout ablation run (Dhaka)
+        candidates = [ckpt_dir / f"{name}_seed{seed}.pt"]
+        if name == "proposed_md":
+            candidates.append(ckpt_dir / f"abl_miss_dropout_s{seed}_seed{seed}.pt")
+        ckpt = next((c for c in candidates if c.exists()), None)
+        if ckpt is None:
+            logger.warning("robustness: no checkpoint for %s, skipping", name)
+            continue
+        m = build(name)
+        m.load_state_dict(torch.load(ckpt, weights_only=False)["model_state"])
+        models_direct[name] = m
+        clean_path = Path(cfg["paths"]["predictions_dir"]) / f"{name}_test.npz"
         if not clean_path.exists():
-            save_predictions(predict(md, datasets["test"], cfg), cfg, "proposed_md")
+            save_predictions(predict(m, datasets["test"], cfg), cfg, name)
 
     two_stage = {}
-    for ts_name in ("two_stage_knn", "two_stage_mice"):
-        m = VanillaTransformer(n_feat, len(stations), n_t, n_h, cfg)
-        m.load_state_dict(torch.load(
-            ckpt_dir / f"{ts_name}_seed{seed}.pt", weights_only=False)["model_state"])
+    for ts_name in rcfg["two_stage"]:
+        ckpt = ckpt_dir / f"{ts_name}_seed{seed}.pt"
+        if not ckpt.exists():
+            logger.warning("robustness: no checkpoint for %s, skipping", ts_name)
+            continue
+        m = build(ts_name)
+        m.load_state_dict(torch.load(ckpt, weights_only=False)["model_state"])
         two_stage[ts_name] = m
 
     # Two corruption mechanisms (both reported in the paper):
@@ -242,12 +328,18 @@ def main() -> None:
     parser.add_argument("--variants", default=",".join(ALL_VARIANTS))
     parser.add_argument("--robustness", action="store_true",
                         help="run only the robustness experiment")
+    parser.add_argument("--export-seed-predictions", action="store_true",
+                        help="only export per-seed test bundles for the "
+                             "proposed family from existing checkpoints")
     args = parser.parse_args()
 
     base_cfg = load_config(args.config)
     setup_logging("05_ablations", base_cfg["paths"]["logs_dir"])
     seed_everything(base_cfg["seed"], base_cfg.get("num_threads"))
 
+    if args.export_seed_predictions:
+        export_seed_predictions(base_cfg)
+        return
     if args.robustness:
         run_robustness(base_cfg)
         return

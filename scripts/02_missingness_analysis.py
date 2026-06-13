@@ -34,20 +34,17 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from src.plotting_style import SEASON_ORDER, apply_style, save_figure
+from src.plotting_style import apply_style, save_figure
 from src.utils import export_table as _export_table
-from src.utils import load_config, seed_everything, setup_logging
+from src.utils import (
+    DEFAULT_SEASON_OF_MONTH as SEASON_OF_MONTH,
+    DEFAULT_SEASON_ORDER as SEASON_ORDER,
+)
+from src.utils import load_config, season_map, seed_everything, setup_logging
 
 import logging
 
 logger = logging.getLogger("02_missingness_analysis")
-
-SEASON_OF_MONTH = {
-    12: "Winter", 1: "Winter", 2: "Winter",
-    3: "Pre-monsoon", 4: "Pre-monsoon", 5: "Pre-monsoon",
-    6: "Monsoon", 7: "Monsoon", 8: "Monsoon", 9: "Monsoon",
-    10: "Post-monsoon", 11: "Post-monsoon",
-}
 
 
 export_table = _export_table
@@ -66,9 +63,12 @@ def missingness_rate_table(df: pd.DataFrame, meas: list[str], tables_dir: Path) 
 
 
 def missingness_heatmaps(df: pd.DataFrame, meas: list[str], figures_dir: Path) -> None:
-    """One time-x-variable binary missingness heatmap per station (4x4 grid)."""
+    """One time-x-variable binary missingness heatmap per station (grid)."""
     stations = sorted(df["station"].unique())
-    fig, axes = plt.subplots(4, 4, figsize=(16, 12), sharex=False)
+    n_cols = 4
+    n_rows = -(-len(stations) // n_cols)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(16, 3 * n_rows), sharex=False)
+    axes = np.atleast_2d(axes)
     for ax, st in zip(axes.flat, stations):
         sub = df[df["station"] == st].set_index("datetime").sort_index()
         # daily missing fraction per variable -> manageable image size
@@ -95,20 +95,26 @@ def missingness_heatmaps(df: pd.DataFrame, meas: list[str], figures_dir: Path) -
 
 
 def seasonal_breakdown(df: pd.DataFrame, meas: list[str], tables_dir: Path,
-                       figures_dir: Path) -> pd.DataFrame:
-    """Per-season and per-month missingness tables + figure."""
+                       figures_dir: Path,
+                       seasons: tuple[dict[int, str], list[str]] | None = None,
+                       ) -> pd.DataFrame:
+    """Per-season and per-month missingness tables + figure.
+
+    ``seasons`` is a ``(month -> season, display order)`` pair, typically
+    ``season_map(cfg)``; defaults to the Bangladesh seasons.
+    """
+    month_season, season_order = seasons or (SEASON_OF_MONTH, SEASON_ORDER)
     df = df.copy()
-    df["season"] = df["datetime"].dt.month.map(SEASON_OF_MONTH)
+    df["season"] = df["datetime"].dt.month.map(month_season)
     df["month"] = df["datetime"].dt.month
 
     season_tbl = (
         df.groupby("season")[meas].apply(lambda g: g.isna().mean() * 100)
-        .reindex(SEASON_ORDER).round(1)
+        .reindex(season_order).round(1)
     )
     export_table(
         season_tbl, tables_dir, "missingness_by_season",
-        "Missingness rate (\\%) per Bangladesh season "
-        "(winter Dec--Feb, pre-monsoon Mar--May, monsoon Jun--Sep, post-monsoon Oct--Nov).",
+        "Missingness rate (\\%) per season.",
         "tab:missingness_season",
     )
     month_tbl = (
@@ -120,7 +126,8 @@ def seasonal_breakdown(df: pd.DataFrame, meas: list[str], tables_dir: Path,
     )
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    key_vars = ["PM2.5", "PM10", "NO2", "O3", "CO", "SO2", "Temp", "RH"]
+    key_vars = [v for v in ("PM2.5", "PM10", "NO2", "O3", "CO", "SO2", "Temp", "RH",
+                            "TEMP", "PRES") if v in month_tbl.columns]
     month_tbl[key_vars].plot(ax=ax, marker="o", markersize=3, linewidth=1.2)
     ax.set_xlabel("Month")
     ax.set_ylabel("Missing (%)")
@@ -235,7 +242,10 @@ def mar_evidence(df: pd.DataFrame, tables_dir: Path, seed: int) -> dict[str, Any
     from sklearn.model_selection import train_test_split
     from sklearn.preprocessing import StandardScaler
 
-    met = ["Temp", "RH", "WS", "BP", "SR"]
+    default_met = ["Temp", "RH", "WS", "BP", "SR"]  # Dhaka column names
+    met = [v for v in default_met if v in df.columns] or [
+        v for v in ("TEMP", "PRES", "DEWP", "WSPM") if v in df.columns  # Beijing
+    ]
     sub = df.dropna(subset=met).copy()
     sub["y"] = sub["PM2.5"].isna().astype(int)
     sub["hour_sin"] = np.sin(2 * np.pi * sub["datetime"].dt.hour / 24)
@@ -294,12 +304,14 @@ def main() -> None:
     ]
 
     missingness_heatmaps(df, meas, figures_dir)
-    season_tbl = seasonal_breakdown(df, meas, tables_dir, figures_dir)
+    season_tbl = seasonal_breakdown(df, meas, tables_dir, figures_dir,
+                                    seasons=season_map(cfg))
     summary["pm25_by_season"] = season_tbl["PM2.5"].to_dict()
     summary["gap_structure"] = gap_length_analysis(df, meas, tables_dir, figures_dir)
 
     corr = co_missingness(df, meas, tables_dir, figures_dir)
-    pollutants = ["SO2", "NO", "NO2", "NOX", "CO", "O3", "PM10", "PM2.5"]
+    pollutants = [v for v in ("SO2", "NO", "NO2", "NOX", "CO", "O3", "PM10", "PM2.5")
+                  if v in corr.index]
     pol_corr = corr.loc[pollutants, pollutants]
     off_diag = pol_corr.to_numpy()[~np.eye(len(pollutants), dtype=bool)]
     summary["mean_pollutant_co_missingness_corr"] = float(off_diag.mean())

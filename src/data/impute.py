@@ -116,11 +116,17 @@ def impute_full_series(
     method: str,
     seed: int,
 ) -> list[np.ndarray]:
-    """Impute the full multivariate series with KNN or IterativeImputer (MICE).
+    """Impute the full multivariate series with KNN, MICE, or SAITS.
 
-    Fit on a random subsample of training-period rows ONLY; transform all rows.
-    Returns one imputed (N_station, V) float32 array per station.
+    Fit on training-period rows ONLY; transform all rows. Returns one imputed
+    (N_station, V) float32 array per station. ``method == "saits"`` delegates
+    to the deep imputer in :mod:`src.models.saits` (same contract).
     """
+    if method == "saits":
+        from src.models.saits import impute_full_series_saits
+
+        return impute_full_series_saits(stations, cfg, seed)
+
     from sklearn.experimental import enable_iterative_imputer  # noqa: F401
     from sklearn.impute import IterativeImputer, KNNImputer
 

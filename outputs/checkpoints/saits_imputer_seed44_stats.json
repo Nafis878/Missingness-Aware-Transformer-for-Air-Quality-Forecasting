@@ -1,0 +1,10 @@
+{
+  "name": "saits_imputer",
+  "seed": 44,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\\air-transformer\\outputs\\checkpoints\\saits_imputer_seed44.pt",
+  "fit_time_s": 334.2,
+  "best_epoch": 29,
+  "best_val_mit_mae": 0.1704,
+  "ffill_val_mit_mae": 0.1923,
+  "n_parameters": 72686
+}

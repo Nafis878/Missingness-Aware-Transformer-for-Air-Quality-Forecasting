@@ -1,0 +1,18 @@
+2026-06-13 00:04:05,500 | INFO    | 01b_prepare_beijing | logging to C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\outputs\beijing\logs\01b_prepare_beijing_20260613_000405.log
+2026-06-13 00:04:07,002 | INFO    | src.data.load_beijing | beijing: 12 station CSVs already in C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\data\raw\beijing, skipping download
+2026-06-13 00:04:08,000 | INFO    | src.data.load_beijing | beijing: loaded 420768 rows, 12 stations, 2013-03-01 00:00:00 .. 2017-02-28 23:00:00
+2026-06-13 00:04:08,217 | INFO    | src.data.clean | stuck-sensor: PM2.5 -> 41 values in runs >= 24 set to NaN
+2026-06-13 00:04:08,431 | INFO    | src.data.clean | stuck-sensor: PM10 -> 146 values in runs >= 24 set to NaN
+2026-06-13 00:04:08,510 | INFO    | src.data.clean | stuck-sensor: SO2 -> 45688 values in runs >= 24 set to NaN
+2026-06-13 00:04:08,745 | INFO    | src.data.clean | stuck-sensor: NO2 -> 637 values in runs >= 24 set to NaN
+2026-06-13 00:04:08,854 | INFO    | src.data.clean | stuck-sensor: CO -> 1745 values in runs >= 24 set to NaN
+2026-06-13 00:04:08,930 | INFO    | src.data.clean | stuck-sensor: O3 -> 4579 values in runs >= 24 set to NaN
+2026-06-13 00:04:09,218 | INFO    | src.data.clean | stuck-sensor: wd_sin -> 316 values in runs >= 24 set to NaN
+2026-06-13 00:04:09,277 | INFO    | src.data.clean | stuck-sensor: wd_cos -> 113 values in runs >= 24 set to NaN
+2026-06-13 00:04:09,467 | INFO    | src.data.clean | hourly reindex: 420768 -> 420768 rows (0 explicit gap rows inserted)
+2026-06-13 00:04:09,701 | INFO    | 01b_prepare_beijing | wrote C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\data\processed\beijing\all_stations.parquet (420768 rows, 12 stations)
+2026-06-13 00:04:09,870 | INFO    | 01b_prepare_beijing | wrote cleaning report to C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\outputs\beijing\data_cleaning_report.md
+2026-06-13 00:04:09,871 | INFO    | 01b_prepare_beijing | missingness PM2.5 : 2.09%
+2026-06-13 00:04:09,872 | INFO    | 01b_prepare_beijing | missingness PM10  : 1.57%
+2026-06-13 00:04:09,873 | INFO    | 01b_prepare_beijing | missingness O3    : 4.24%
+2026-06-13 00:04:09,873 | INFO    | 01b_prepare_beijing | missingness CO    : 5.33%

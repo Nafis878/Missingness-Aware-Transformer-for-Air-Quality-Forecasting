@@ -1,0 +1,15 @@
+2026-06-13 00:03:20,697 | INFO    | 01b_prepare_beijing | logging to C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\outputs\beijing\logs\01b_prepare_beijing_20260613_000320.log
+2026-06-13 00:03:22,541 | INFO    | src.data.load_beijing | beijing: downloading https://archive.ics.uci.edu/static/public/501/beijing+multi+site+air+quality+data.zip
+2026-06-13 00:03:35,118 | INFO    | src.data.load_beijing | beijing: downloaded 7.8 MB
+2026-06-13 00:03:35,239 | INFO    | src.data.load_beijing | beijing: extracted 12 station CSVs to C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\data\raw\beijing
+2026-06-13 00:03:36,742 | INFO    | src.data.load_beijing | beijing: loaded 420768 rows, 12 stations, 2013-03-01 00:00:00 .. 2017-02-28 23:00:00
+2026-06-13 00:03:36,938 | INFO    | src.data.clean | stuck-sensor: PM2.5 -> 41 values in runs >= 24 set to NaN
+2026-06-13 00:03:37,045 | INFO    | src.data.clean | stuck-sensor: PM10 -> 146 values in runs >= 24 set to NaN
+2026-06-13 00:03:37,148 | INFO    | src.data.clean | stuck-sensor: SO2 -> 45688 values in runs >= 24 set to NaN
+2026-06-13 00:03:37,246 | INFO    | src.data.clean | stuck-sensor: NO2 -> 637 values in runs >= 24 set to NaN
+2026-06-13 00:03:37,348 | INFO    | src.data.clean | stuck-sensor: CO -> 1745 values in runs >= 24 set to NaN
+2026-06-13 00:03:37,454 | INFO    | src.data.clean | stuck-sensor: O3 -> 4579 values in runs >= 24 set to NaN
+2026-06-13 00:03:37,892 | INFO    | src.data.clean | stuck-sensor: wd_sin -> 316 values in runs >= 24 set to NaN
+2026-06-13 00:03:37,984 | INFO    | src.data.clean | stuck-sensor: wd_cos -> 113 values in runs >= 24 set to NaN
+2026-06-13 00:03:38,308 | INFO    | src.data.clean | hourly reindex: 420768 -> 420768 rows (0 explicit gap rows inserted)
+2026-06-13 00:03:38,772 | INFO    | 01b_prepare_beijing | wrote C:\Users\UseR\Downloads\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\air-transformer\data\processed\beijing\all_stations.parquet (420768 rows, 12 stations)

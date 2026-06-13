@@ -51,6 +51,26 @@ def masked_mse(
     return se.sum() / denom.clamp(min=1.0)
 
 
+def resolve_device(cfg: dict[str, Any]) -> torch.device:
+    """Training device: ``cfg["device"]`` if set, else CUDA when available.
+
+    The repo is CPU-first (deployability claim); GPU support exists so the
+    Beijing runs can train on Colab. ``seed_everything`` keeps determinism on
+    both (CUBLAS_WORKSPACE_CONFIG + use_deterministic_algorithms), but CPU and
+    GPU runs at the same seed are not bit-identical.
+    """
+    dev = cfg.get("device", "auto")
+    if dev in (None, "auto"):
+        dev = "cuda" if torch.cuda.is_available() else "cpu"
+    return torch.device(dev)
+
+
+def _to_device(batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
+    if device.type == "cpu":
+        return batch
+    return {k: v.to(device, non_blocking=True) for k, v in batch.items()}
+
+
 def make_loader(ds: Dataset, cfg: dict[str, Any], shuffle: bool, seed: int = 0) -> DataLoader:
     """DataLoader with a seeded generator for reproducible shuffling."""
     gen = torch.Generator()
@@ -66,10 +86,13 @@ def make_loader(ds: Dataset, cfg: dict[str, Any], shuffle: bool, seed: int = 0) 
 
 
 @torch.no_grad()
-def _eval_loss(model: nn.Module, loader: DataLoader, hw: torch.Tensor) -> float:
+def _eval_loss(
+    model: nn.Module, loader: DataLoader, hw: torch.Tensor, device: torch.device
+) -> float:
     model.eval()
     total, weight = 0.0, 0.0
     for batch in loader:
+        batch = _to_device(batch, device)
         pred = model(batch)
         n = batch["target_mask"].sum().item()
         loss = masked_mse(pred, batch["targets"], batch["target_mask"], hw)
@@ -92,7 +115,9 @@ def train_model(
     train time, parameter count, loss history.
     """
     tcfg = cfg["train"]
-    hw = torch.tensor(tcfg["horizon_loss_weights"], dtype=torch.float32)
+    device = resolve_device(cfg)
+    model.to(device)
+    hw = torch.tensor(tcfg["horizon_loss_weights"], dtype=torch.float32, device=device)
     train_loader = make_loader(train_ds, cfg, shuffle=True, seed=seed)
     val_loader = make_loader(val_ds, cfg, shuffle=False)
 
@@ -114,6 +139,7 @@ def train_model(
         model.train()
         ep_loss, ep_n = 0.0, 0.0
         for batch in train_loader:
+            batch = _to_device(batch, device)
             optimizer.zero_grad()
             pred = model(batch)
             loss = masked_mse(pred, batch["targets"], batch["target_mask"], hw)
@@ -126,16 +152,18 @@ def train_model(
         scheduler.step()
 
         train_loss = ep_loss / max(ep_n, 1.0)
-        val_loss = _eval_loss(model, val_loader, hw)
+        val_loss = _eval_loss(model, val_loader, hw, device)
         history.append({"epoch": epoch, "train": train_loss, "val": val_loss})
         logger.info("%s epoch %02d: train=%.4f val=%.4f lr=%.2e",
                     name, epoch, train_loss, val_loss, scheduler.get_last_lr()[0])
 
         if val_loss < best_val:
             best_val, best_epoch = val_loss, epoch
+            # state dict moved to CPU so GPU-trained checkpoints (Colab) load
+            # on CPU-only machines without map_location gymnastics
             torch.save(
-                {"model_state": model.state_dict(), "epoch": epoch,
-                 "val_loss": val_loss, "name": name, "seed": seed},
+                {"model_state": {k: v.cpu() for k, v in model.state_dict().items()},
+                 "epoch": epoch, "val_loss": val_loss, "name": name, "seed": seed},
                 ckpt_path,
             )
         elif epoch - best_epoch >= patience:
@@ -162,12 +190,15 @@ def predict(model: nn.Module, ds: Dataset, cfg: dict[str, Any]) -> dict[str, np.
     Keys: predictions, targets, target_mask (n, T, H); station_id,
     anchor_time (n,); latency_ms_per_window (scalar).
     """
+    device = resolve_device(cfg)
+    model.to(device)
     model.eval()
     loader = make_loader(ds, cfg, shuffle=False)
     preds, targets, masks, sids, times = [], [], [], [], []
     t0 = time.perf_counter()
     for batch in loader:
-        preds.append(model(batch).numpy())
+        dev_batch = _to_device(batch, device)
+        preds.append(model(dev_batch).cpu().numpy())
         targets.append(batch["targets"].numpy())
         masks.append(batch["target_mask"].numpy())
         sids.append(batch["station_id"].numpy())
@@ -184,10 +215,19 @@ def predict(model: nn.Module, ds: Dataset, cfg: dict[str, Any]) -> dict[str, np.
 
 
 def save_predictions(
-    out: dict[str, np.ndarray], cfg: dict[str, Any], name: str, split: str = "test"
+    out: dict[str, np.ndarray], cfg: dict[str, Any], name: str, split: str = "test",
+    subdir: str | None = None,
 ) -> Path:
-    """Persist aligned prediction arrays for Phase 5 evaluation."""
+    """Persist aligned prediction arrays for Phase 5 evaluation.
+
+    ``subdir="seeds"`` is used for per-seed bundles
+    (``predictions/seeds/{model}_s{seed}_test.npz``); they must NOT sit at the
+    top level, where :func:`src.evaluate.load_bundles` would pick them up as
+    phantom models.
+    """
     pred_dir = Path(cfg["paths"]["predictions_dir"])
+    if subdir:
+        pred_dir = pred_dir / subdir
     pred_dir.mkdir(parents=True, exist_ok=True)
     path = pred_dir / f"{name}_{split}.npz"
     np.savez_compressed(path, **out)
