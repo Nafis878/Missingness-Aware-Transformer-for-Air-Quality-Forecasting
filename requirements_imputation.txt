@@ -1,0 +1,17 @@
+# Extra dependencies for the imputation-techniques benchmark notebook
+# (notebooks/imputation_benchmark.ipynb). The pinned requirements.txt is the
+# source of truth for the paper pipeline; this file is ADDITIVE and only adds the
+# imputers the benchmark needs that are not already deps.
+#
+# Colab note: do NOT reinstall torch/numpy/pandas/matplotlib — Colab ships a CUDA
+# torch and reinstalling breaks GPU. Install this file with --no-deps-on-torch in
+# mind; pypots is pinned loosely so it reuses Colab's torch. See the notebook's
+# setup cell, which installs these with `pip install -q` and lets failures degrade
+# a method to "skipped" rather than aborting the run.
+
+pypots>=0.7            # SAITS, BRITS, M-RNN, GRU-D, Transformer, TimesNet, CSDI, GP-VAE, US-GAN
+fancyimpute>=0.7       # SoftImpute, IterativeSVD (PCA), MatrixFactorization (PMF)
+scikit-fuzzy>=0.4      # fuzzy c-means
+minisom>=2.3           # Self-Organizing Map imputation
+# scikit-learn / statsmodels / scipy are already in requirements.txt (KNN, MICE,
+# IterativeImputer, RandomForest, SVR, DecisionTree, SARIMAX/Kalman).
