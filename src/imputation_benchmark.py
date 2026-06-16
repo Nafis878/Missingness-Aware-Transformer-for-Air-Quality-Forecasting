@@ -654,110 +654,132 @@ def _make_torch_ae(cfg, train_stations, device, denoising, seed=0, epochs=15):
 # Registry
 # ---------------------------------------------------------------------------
 
-def build_methods(cfg, train_stations, scalers, *, device="cpu",
-                  include_slow=True, include_deep=True, seed=42,
-                  only=None) -> tuple[list[Method], list[dict]]:
-    """Build the method list and the list of skipped methods (with reasons).
+@dataclass
+class MethodSpec:
+    """A method that is *not yet built*: ``build()`` fits/constructs it on demand.
 
-    ``only`` (set of names) restricts the registry for smoke tests.
+    Lazy construction is what makes resume cheap — a method whose result is already
+    on disk is never built (no KNN refit, no deep-model training). ``build()`` returns
+    the ``ImputerFn`` or ``None`` when an optional dependency is missing.
+    """
+
+    name: str
+    family: str
+    speed: str
+    build: Callable[[], "ImputerFn | None"]
+
+
+def iter_method_specs(cfg, train_stations, scalers, *, device="cpu",
+                      include_slow=True, include_deep=True, seed=42,
+                      only=None) -> list[MethodSpec]:
+    """Ordered list of every method as a lazy spec (nothing is fitted yet).
+
+    ``forward_fill`` is emitted first so the resumable runner always has the
+    imputability baseline before any other method. ``only`` (set of names) restricts
+    the registry; ``include_slow`` / ``include_deep`` drop those speed tiers.
     """
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.svm import SVR
     from sklearn.tree import DecisionTreeRegressor
 
-    methods: list[Method] = []
-    skipped: list[dict] = []
-
-    def add(name, family, speed, fn):
-        if only is not None and name not in only:
-            return
-        if fn is None:
-            skipped.append({"method": name, "family": family,
-                            "reason": "optional dependency unavailable"})
-            return
-        if speed == "slow" and not include_slow:
-            return
-        if speed == "deep" and not include_deep:
-            return
-        methods.append(Method(name, family, speed, fn))
-
-    # --- simple / fast ---
-    add("mean", "mean-based", "fast", _impute_mean)
-    add("forward_fill", "mean-based", "fast", _impute_ffill)
-    add("last_and_next_mean", "mean-based", "fast", _impute_last_next)
-    add("hour_mean", "mean-based", "fast", _impute_hour_mean)
-    add("daily_mean", "mean-based", "fast", _impute_day_mean)
-    add("linear_interp", "interpolation", "fast", _impute_linear)
-    add("cubic_spline", "interpolation", "fast", _impute_cubic)
-    add("nearest_interp", "interpolation", "fast", _impute_nearest)
-    add("spatial_idw", "spatial", "fast", _impute_spatial)
-
-    # --- fitted row-wise (sklearn) ---
     icap = 20000
-    try:
-        add("knn", "proximity", "fast",
-            _make_sklearn_imputer("knn", cfg, train_stations, scalers, seed, icap, k=5))
-        add("nearest_neighbor", "proximity", "fast",
-            _make_sklearn_imputer("knn", cfg, train_stations, scalers, seed, icap, k=1))
-        add("weighted_knn", "proximity", "fast",
-            _make_sklearn_imputer("knn", cfg, train_stations, scalers, seed, icap,
-                                  k=5, weights="distance"))
-        add("mice", "regression/MICE", "fast",
-            _make_sklearn_imputer("mice", cfg, train_stations, scalers, seed, icap))
-        add("stochastic_regression", "regression/MICE", "fast",
-            _make_sklearn_imputer("mice", cfg, train_stations, scalers, seed, icap,
-                                  posterior=True))
-        add("decision_tree_cart", "ML-tree", "slow",
-            _make_sklearn_imputer("custom", cfg, train_stations, scalers, seed, 8000,
-                                  estimator=DecisionTreeRegressor(max_depth=12,
-                                                                  random_state=seed),
-                                  max_iter=5))
-        add("missforest_rf", "ML-tree", "slow",
-            _make_sklearn_imputer("custom", cfg, train_stations, scalers, seed, 8000,
-                                  estimator=RandomForestRegressor(n_estimators=60,
-                                                                  n_jobs=-1,
-                                                                  random_state=seed),
-                                  max_iter=4))
-        add("svr_regression", "ML-SVM", "slow",
-            _make_sklearn_imputer("custom", cfg, train_stations, scalers, seed, 4000,
-                                  estimator=SVR(C=1.0), max_iter=3))
-    except Exception as exc:  # pragma: no cover
-        logger.warning("sklearn fitted imputers failed (%s)", exc)
-
-    # --- transductive matrix completion ---
-    add("em_gaussian", "EM/MLE", "fast",
-        lambda x, m, c: _gaussian_em_impute(x, m, c, seed=seed))
-    add("emb_bootstrap", "EM/MLE", "fast",
-        lambda x, m, c: _gaussian_em_impute(x, m, c, bootstrap=True, seed=seed))
-    add("ppca", "matrix/PCA", "fast", _ppca_impute)
-    add("softimpute", "matrix/PCA", "fast", _fancyimpute_method("softimpute"))
-    add("iterative_svd", "matrix/PCA", "fast", _fancyimpute_method("iterativesvd"))
-    add("matrix_factorization", "matrix/PCA", "slow", _fancyimpute_method("matrixfact"))
-
-    # --- time-series state space (slow) ---
-    add("arima", "state-space", "slow",
-        lambda x, m, c: _statespace_impute(x, m, c, "arima"))
-    add("kalman_smoother", "state-space", "slow",
-        lambda x, m, c: _statespace_impute(x, m, c, "kalman"))
-    add("ssa", "state-space", "slow", _ssa_impute)
-
-    # --- clustering ---
-    add("kmeans", "clustering", "fast", _kmeans_impute)
-    add("som", "clustering", "slow", _som_method())
-    add("fuzzy_cmeans", "fuzzy", "slow", _fuzzy_cmeans_method())
-
-    # --- deep ---
-    add("autoencoder", "deep-AE", "deep",
-        _make_torch_ae(cfg, train_stations, device, denoising=False) if include_deep else None)
-    add("denoising_ae", "deep-AE", "deep",
-        _make_torch_ae(cfg, train_stations, device, denoising=True) if include_deep else None)
+    sk = lambda *a, **k: _make_sklearn_imputer(*a, cfg=cfg, train_stations=train_stations,  # noqa: E731
+                                               scalers=scalers, seed=seed, **k)
+    # (name, family, speed, thunk). forward_fill first (imputability baseline).
+    reg: list[tuple] = [
+        ("forward_fill", "mean-based", "fast", lambda: _impute_ffill),
+        ("mean", "mean-based", "fast", lambda: _impute_mean),
+        ("last_and_next_mean", "mean-based", "fast", lambda: _impute_last_next),
+        ("hour_mean", "mean-based", "fast", lambda: _impute_hour_mean),
+        ("daily_mean", "mean-based", "fast", lambda: _impute_day_mean),
+        ("linear_interp", "interpolation", "fast", lambda: _impute_linear),
+        ("cubic_spline", "interpolation", "fast", lambda: _impute_cubic),
+        ("nearest_interp", "interpolation", "fast", lambda: _impute_nearest),
+        ("spatial_idw", "spatial", "fast", lambda: _impute_spatial),
+        ("knn", "proximity", "fast",
+         lambda: sk("knn", subsample=icap, k=5)),
+        ("nearest_neighbor", "proximity", "fast",
+         lambda: sk("knn", subsample=icap, k=1)),
+        ("weighted_knn", "proximity", "fast",
+         lambda: sk("knn", subsample=icap, k=5, weights="distance")),
+        ("mice", "regression/MICE", "fast", lambda: sk("mice", subsample=icap)),
+        ("stochastic_regression", "regression/MICE", "fast",
+         lambda: sk("mice", subsample=icap, posterior=True)),
+        ("em_gaussian", "EM/MLE", "fast",
+         lambda: (lambda x, m, c: _gaussian_em_impute(x, m, c, seed=seed))),
+        ("emb_bootstrap", "EM/MLE", "fast",
+         lambda: (lambda x, m, c: _gaussian_em_impute(x, m, c, bootstrap=True, seed=seed))),
+        ("ppca", "matrix/PCA", "fast", lambda: _ppca_impute),
+        ("softimpute", "matrix/PCA", "fast", lambda: _fancyimpute_method("softimpute")),
+        ("iterative_svd", "matrix/PCA", "fast", lambda: _fancyimpute_method("iterativesvd")),
+        ("kmeans", "clustering", "fast", lambda: _kmeans_impute),
+        ("decision_tree_cart", "ML-tree", "slow",
+         lambda: sk("custom", subsample=8000, max_iter=5,
+                    estimator=DecisionTreeRegressor(max_depth=12, random_state=seed))),
+        ("missforest_rf", "ML-tree", "slow",
+         lambda: sk("custom", subsample=8000, max_iter=4,
+                    estimator=RandomForestRegressor(n_estimators=60, n_jobs=-1,
+                                                    random_state=seed))),
+        ("svr_regression", "ML-SVM", "slow",
+         lambda: sk("custom", subsample=4000, max_iter=3, estimator=SVR(C=1.0))),
+        ("matrix_factorization", "matrix/PCA", "slow",
+         lambda: _fancyimpute_method("matrixfact")),
+        ("arima", "state-space", "slow",
+         lambda: (lambda x, m, c: _statespace_impute(x, m, c, "arima"))),
+        ("kalman_smoother", "state-space", "slow",
+         lambda: (lambda x, m, c: _statespace_impute(x, m, c, "kalman"))),
+        ("ssa", "state-space", "slow", lambda: _ssa_impute),
+        ("som", "clustering", "slow", lambda: _som_method()),
+        ("fuzzy_cmeans", "fuzzy", "slow", lambda: _fuzzy_cmeans_method()),
+        ("autoencoder", "deep-AE", "deep",
+         lambda: _make_torch_ae(cfg, train_stations, device, denoising=False)),
+        ("denoising_ae", "deep-AE", "deep",
+         lambda: _make_torch_ae(cfg, train_stations, device, denoising=True)),
+    ]
     for nm, fam in [("gpvae", "deep-AE"), ("brits", "deep-RNN"), ("mrnn", "deep-RNN"),
                     ("grud", "deep-RNN"), ("saits", "deep-attention"),
                     ("transformer", "deep-attention"), ("timesnet", "deep-attention"),
                     ("csdi", "deep-attention"), ("usgan", "deep-GAN")]:
-        add(nm, fam, "deep",
-            _make_pypots_method(nm, cfg, train_stations, device) if include_deep else None)
+        reg.append((nm, fam, "deep",
+                    (lambda nm=nm: _make_pypots_method(nm, cfg, train_stations, device))))
 
+    specs = []
+    for name, family, speed, thunk in reg:
+        if only is not None and name not in only:
+            continue
+        if speed == "slow" and not include_slow:
+            continue
+        if speed == "deep" and not include_deep:
+            continue
+        specs.append(MethodSpec(name, family, speed, thunk))
+    return specs
+
+
+def build_methods(cfg, train_stations, scalers, *, device="cpu",
+                  include_slow=True, include_deep=True, seed=42,
+                  only=None) -> tuple[list[Method], list[dict]]:
+    """Eagerly build every method (back-compat wrapper over :func:`iter_method_specs`).
+
+    Returns ``(methods, skipped)``; a spec whose ``build()`` yields ``None`` (missing
+    optional dependency) lands in ``skipped``. Prefer :func:`run_resumable` for long
+    runs — it builds lazily and checkpoints.
+    """
+    specs = iter_method_specs(cfg, train_stations, scalers, device=device,
+                              include_slow=include_slow, include_deep=include_deep,
+                              seed=seed, only=only)
+    methods: list[Method] = []
+    skipped: list[dict] = []
+    for sp in specs:
+        try:
+            fn = sp.build()
+        except Exception as exc:  # pragma: no cover
+            logger.warning("%s failed to build (%s)", sp.name, exc)
+            fn = None
+        if fn is None:
+            skipped.append({"method": sp.name, "family": sp.family,
+                            "reason": "optional dependency unavailable or build failed"})
+        else:
+            methods.append(Method(sp.name, sp.family, sp.speed, fn))
     return methods, skipped
 
 
@@ -928,6 +950,230 @@ def run_benchmark(cfg, scalers, methods, *, patterns=("mcar", "outage"),
         ["pattern", "overall_std_rmse"]).reset_index(drop=True)
     long = pd.DataFrame(long_rows)
     return leaderboard, long
+
+
+# ---------------------------------------------------------------------------
+# Resumable driver: build lazily, checkpoint per method, skip finished work
+# ---------------------------------------------------------------------------
+
+def _prepare_inputs(slices, spatial, feats, patterns, holdout_rate, seed):
+    """Method-independent per (pattern, slice) inputs: identical hidden cells for all.
+
+    Returns a list of dicts ``{pattern, art, x_in, m_in, ctx, tgt}``. The holdout is a
+    pure function of (seed, station, pattern) so every method scores the same cells and
+    a resumed run reproduces them exactly.
+    """
+    pat_id = {"mcar": 1, "outage": 2}
+    prepared = []
+    for pattern in patterns:
+        for s in slices:
+            rng = np.random.default_rng(np.random.SeedSequence(
+                [seed, int(s["station_id"]), pat_id.get(pattern, 0)]))
+            mask = s["mask"]
+            art = (_holdout_mcar(mask, holdout_rate, rng) if pattern == "mcar"
+                   else _holdout_outage(mask, holdout_rate, rng))
+            if not art.any():
+                continue
+            m_in = ((mask > 0) & ~art).astype(np.float32)
+            prepared.append({
+                "pattern": pattern, "art": art,
+                "x_in": (s["vals"] * m_in).astype(np.float32), "m_in": m_in,
+                "tgt": s["vals"],
+                "ctx": SliceCtx(times=s["times"], var_names=feats,
+                                station_id=s["station_id"], spatial=spatial),
+            })
+    return prepared
+
+
+def _score_one(fn, prepared, patterns, V):
+    """Accumulate a single method's error over all prepared (pattern, slice) inputs."""
+    def fresh():
+        return dict(sse=np.zeros(V), sae=np.zeros(V), n=np.zeros(V),
+                    st=np.zeros(V), st2=np.zeros(V), t=0.0)
+    acc = {p: fresh() for p in patterns}
+    for it in prepared:
+        a = acc[it["pattern"]]
+        t0 = time.perf_counter()
+        try:
+            rec = fn(it["x_in"], it["m_in"], it["ctx"])
+        except Exception as exc:
+            logger.warning("method failed on a slice: %s", exc)
+            a["t"] += time.perf_counter() - t0
+            continue
+        a["t"] += time.perf_counter() - t0
+        art, tgt = it["art"], it["tgt"]
+        for v in range(V):
+            cell = art[:, v]
+            if not cell.any():
+                continue
+            e = rec[cell, v] - tgt[cell, v]
+            a["sse"][v] += float((e ** 2).sum())
+            a["sae"][v] += float(np.abs(e).sum())
+            a["n"][v] += int(cell.sum())
+            a["st"][v] += float(tgt[cell, v].sum())
+            a["st2"][v] += float((tgt[cell, v] ** 2).sum())
+    return acc
+
+
+def _rows_from_acc(name, family, dsname, feats, pm25, std, acc, baseline):
+    """Turn one method's accumulators into board + per-variable rows."""
+    V = len(feats)
+    board, long = [], []
+    for pattern, a in acc.items():
+        n_tot = a["n"].sum()
+        if n_tot == 0:
+            continue
+        overall_rmse = float(np.sqrt(a["sse"].sum() / n_tot))
+        overall_mae = float(a["sae"].sum() / n_tot)
+        tss = (a["st2"] - np.where(a["n"] > 0, a["st"] ** 2 / np.maximum(a["n"], 1), 0)).sum()
+        r2 = float(1 - a["sse"].sum() / tss) if tss > 0 else float("nan")
+        base = baseline.get(pattern)
+        imput = float(1 - overall_rmse / base) if base else float("nan")
+        with np.errstate(invalid="ignore", divide="ignore"):
+            pm_rmse = float(np.sqrt(a["sse"][pm25] / a["n"][pm25]) * std[pm25]) if a["n"][pm25] else float("nan")
+            pm_mae = float(a["sae"][pm25] / a["n"][pm25] * std[pm25]) if a["n"][pm25] else float("nan")
+        board.append({
+            "dataset": dsname, "method": name, "family": family, "pattern": pattern,
+            "pm25_rmse_ugm3": round(pm_rmse, 3), "pm25_mae_ugm3": round(pm_mae, 3),
+            "overall_std_rmse": round(overall_rmse, 4), "overall_std_mae": round(overall_mae, 4),
+            "overall_r2": round(r2, 4), "imputability": round(imput, 4),
+            "runtime_s": round(a["t"], 1), "n_cells": int(n_tot),
+        })
+        for v in range(V):
+            if a["n"][v] == 0:
+                continue
+            long.append({
+                "dataset": dsname, "method": name, "family": family, "pattern": pattern,
+                "variable": feats[v],
+                "rmse_ugm3": round(float(np.sqrt(a["sse"][v] / a["n"][v]) * std[v]), 3),
+                "mae_ugm3": round(float(a["sae"][v] / a["n"][v] * std[v]), 3),
+                "rmse_std": round(float(np.sqrt(a["sse"][v] / a["n"][v])), 4),
+                "n_cells": int(a["n"][v]),
+            })
+    return board, long
+
+
+def run_resumable(cfg, scalers, results_base, *, train_stations=None,
+                  patterns=("mcar", "outage"), holdout_rate=0.2, seed=42,
+                  include_slow=True, include_deep=True, only=None, device="cpu",
+                  max_stations=None, max_slice_len=None, log=print):
+    """Benchmark with per-method checkpointing and resume.
+
+    Each method is built (fitted/trained) only when it is about to run, scored across
+    all slices/patterns, and its rows are written to
+    ``<results_base>/<dataset>/per_method/<name>.csv`` immediately. Re-invoking with the
+    same ``results_base`` skips any method whose file already exists — so a Colab
+    disconnect costs at most the one method in flight. Returns the dataset leaderboard.
+
+    Point ``results_base`` at Google Drive to survive disconnects entirely.
+    """
+    feats = feature_columns(cfg)
+    V = len(feats)
+    pm25 = feats.index(cfg["dataset"]["primary_target"])
+    std = np.array([scalers[c][1] for c in feats])
+    dsname = str(cfg.get("dataset_name", "dhaka")).capitalize()
+
+    if train_stations is None:
+        df_tr = pd.read_parquet(os.path.join(cfg["paths"]["processed_dir"],
+                                             "all_stations.parquet"))
+        train_stations = build_station_arrays(df_tr, cfg, scalers)
+
+    _, _, slices = _test_slices(cfg, scalers, max_stations)
+    if max_slice_len:
+        for s in slices:
+            for k in ("times", "vals", "mask"):
+                s[k] = s[k][:max_slice_len]
+    spatial = _build_spatial_panel(slices)
+    prepared = _prepare_inputs(slices, spatial, feats, patterns, holdout_rate, seed)
+
+    ds_dir = os.path.join(results_base, dsname.lower())
+    pm_dir = os.path.join(ds_dir, "per_method")
+    os.makedirs(pm_dir, exist_ok=True)
+
+    specs = iter_method_specs(cfg, train_stations, scalers, device=device,
+                              include_slow=include_slow, include_deep=include_deep,
+                              seed=seed, only=only)
+    log(f"[{dsname}] {len(specs)} methods queued -> {pm_dir}")
+
+    baseline: dict[str, float] = {}
+    # if forward_fill already done in a previous session, load its baseline
+    ff_csv = os.path.join(pm_dir, "forward_fill.csv")
+    if os.path.exists(ff_csv):
+        ff = pd.read_csv(ff_csv)
+        baseline = dict(zip(ff["pattern"], ff["overall_std_rmse"]))
+
+    for sp in specs:
+        out_csv = os.path.join(pm_dir, f"{sp.name}.csv")
+        skip_mark = os.path.join(pm_dir, f"{sp.name}.skipped")
+        if os.path.exists(out_csv) or os.path.exists(skip_mark):
+            log(f"[{dsname}] skip {sp.name} (already saved)")
+            if sp.name == "forward_fill" and os.path.exists(out_csv) and not baseline:
+                ff = pd.read_csv(out_csv)
+                baseline = dict(zip(ff["pattern"], ff["overall_std_rmse"]))
+            continue
+        t0 = time.perf_counter()
+        try:
+            fn = sp.build()
+        except Exception as exc:
+            fn = None
+            log(f"[{dsname}] {sp.name} build error: {exc}")
+        if fn is None:
+            with open(skip_mark, "w") as fh:
+                fh.write("optional dependency unavailable or build failed\n")
+            log(f"[{dsname}] {sp.name} SKIPPED (missing dep / build failed)")
+            continue
+        acc = _score_one(fn, prepared, patterns, V)
+        if sp.name == "forward_fill":
+            for p, a in acc.items():
+                nt = a["n"].sum()
+                if nt:
+                    baseline[p] = round(float(np.sqrt(a["sse"].sum() / nt)), 4)
+        board, long = _rows_from_acc(sp.name, sp.family, dsname, feats, pm25, std,
+                                     acc, baseline)
+        pd.DataFrame(board).to_csv(out_csv, index=False)
+        pd.DataFrame(long).to_csv(os.path.join(pm_dir, f"{sp.name}_pervar.csv"), index=False)
+        del fn  # free the (possibly GPU) model before the next method
+        log(f"[{dsname}] saved {sp.name}  ({(time.perf_counter()-t0)/60:.1f} min)")
+
+    return aggregate_dataset(ds_dir)
+
+
+def aggregate_dataset(ds_dir):
+    """Concatenate per-method CSVs in ``<ds_dir>/per_method`` into the dataset tables."""
+    pm_dir = os.path.join(ds_dir, "per_method")
+    boards, longs = [], []
+    for fn in sorted(os.listdir(pm_dir)) if os.path.isdir(pm_dir) else []:
+        path = os.path.join(pm_dir, fn)
+        if fn.endswith("_pervar.csv"):
+            longs.append(pd.read_csv(path))
+        elif fn.endswith(".csv"):
+            boards.append(pd.read_csv(path))
+    if not boards:
+        return pd.DataFrame()
+    board = pd.concat(boards, ignore_index=True).sort_values(
+        ["pattern", "overall_std_rmse"]).reset_index(drop=True)
+    board.to_csv(os.path.join(ds_dir, "leaderboard.csv"), index=False)
+    if longs:
+        pd.concat(longs, ignore_index=True).to_csv(
+            os.path.join(ds_dir, "per_variable.csv"), index=False)
+    return board
+
+
+def aggregate_all(results_base):
+    """Combine every dataset's leaderboard into one table under ``results_base``."""
+    boards = []
+    for name in sorted(os.listdir(results_base)) if os.path.isdir(results_base) else []:
+        ds_dir = os.path.join(results_base, name)
+        if not os.path.isdir(ds_dir):
+            continue
+        b = aggregate_dataset(ds_dir)
+        if len(b):
+            boards.append(b)
+    if not boards:
+        return pd.DataFrame()
+    allb = pd.concat(boards, ignore_index=True)
+    allb.to_csv(os.path.join(results_base, "leaderboard_all.csv"), index=False)
+    return allb
 
 
 # ---------------------------------------------------------------------------
