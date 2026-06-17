@@ -1,4 +1,5 @@
 dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Dhaka,hybrid_top8,hybrid,mcar,74.815,20.741,0.8214,0.1828,0.7923,0.2066,152.1,264413
 Dhaka,tensor_cp,tensor,mcar,76.665,19.22,0.8418,0.1594,0.7819,0.1869,0.2,264413
 Dhaka,fcm_svr,hybrid,mcar,87.2,32.765,0.9404,0.3236,0.7278,0.0917,0.9,264413
 Dhaka,som_lssvm,hybrid,mcar,86.531,32.534,0.9812,0.335,0.7037,0.0523,49.2,264413
@@ -19,6 +20,7 @@ Dhaka,rbf_net,kernel,mcar,88.897,42.747,1.7422,0.6917,0.0658,-0.6826,44.5,264413
 Dhaka,grnn_pnn,kernel,mcar,90.866,40.835,1.8659,0.5025,-0.0716,-0.8021,1.9,264413
 Dhaka,irbi,ratio,mcar,91.32,44.554,1.9117,0.8406,-0.1249,-0.8464,0.5,264413
 Dhaka,rbi,ratio,mcar,93.32,48.581,1.9165,0.8455,-0.1306,-0.851,0.3,264413
+Dhaka,hybrid_top8,hybrid,outage,98.087,42.874,1.1487,0.4241,0.5891,0.212,172.9,266833
 Dhaka,tensor_cp,tensor,outage,101.512,44.083,1.1872,0.4333,0.5611,0.1856,0.1,266833
 Dhaka,fcm_svr,hybrid,outage,106.243,46.733,1.2227,0.4901,0.5344,0.1612,0.9,266833
 Dhaka,mkl_cluster,hybrid,outage,96.593,45.916,1.2321,0.5139,0.5272,0.1548,56.5,266833

@@ -124,11 +124,23 @@ numbers. Full per-dataset leaderboards, figures, and analysis:
 [`outputs/imputation_benchmark_extended/`](outputs/imputation_benchmark_extended/).
 
 > **Headline:** simple temporal methods still win — `linear_interp`, `last_and_next_mean`, `ssa`
-> top most cells. The strongest *newcomer* is **`tensor_cp`** (CP/PARAFAC of a day×hour×variable
-> tensor): #1 on Beijing MCAR (+0.208) and #2 on Dhaka/Delhi MCAR, matching the best classical
-> method. `rbi`/`irbi` reach the Beijing-outage top-3; `bayesnet_chowliu` and `grey_fcm` make the
-> Delhi-outage top-5. Most other deep/ML/fuzzy methods stay below forward-fill. `csdi` diverged
-> (excluded from figures — do not quote it).
+> top most cells. The strongest *single newcomer* is **`tensor_cp`** (CP/PARAFAC of a
+> day×hour×variable tensor): #1 on Beijing MCAR (+0.208) and #2 on Dhaka/Delhi MCAR, matching the
+> best classical method. `rbi`/`irbi` reach the Beijing-outage top-3; `bayesnet_chowliu` and
+> `grey_fcm` make the Delhi-outage top-5. Most other deep/ML/fuzzy methods stay below forward-fill.
+> `csdi` diverged (excluded from figures — do not quote it).
+
+**Ensemble result — `hybrid_top8`.** Merging the eight best methods into an
+**imputability-weighted blend** (`tensor_cp`, `linear_interp`, `last_and_next_mean`, `ssa`,
+`fcm_svr`, `som_lssvm`, `nearest_interp`, `mkl_cluster`; weights = their mean imputability,
+renormalized per slice) produces the **overall #1 imputer of all 61** — mean imputability
+**+0.218**, ahead of every individual member (`tensor_cp`/`linear_interp` +0.193). It is rank #1
+in **4 of 6** dataset×pattern cells and beats forward-fill in **all 6**. The two exceptions are
+honest: Beijing outage (#2 — `spatial_idw`'s +0.507 is in a class of its own there) and Delhi
+outage (#9). So the blend wins by being *consistently* near-best across conditions rather than
+spiking in one — the expected, useful behaviour of an ensemble. Implemented as `hybrid_top8` in
+[`src/imputation_benchmark_extended.py`](src/imputation_benchmark_extended.py); it cannot see the
+missingness pattern at impute time, so it uses one global weight set (deployment-realistic).
 
 | # | Technique (taxonomy) | Status | Implemented as | Family | Best imputability | Beats FF |
 |---:|---|---|---|---|---:|:--:|

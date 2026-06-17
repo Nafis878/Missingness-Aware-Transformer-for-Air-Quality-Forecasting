@@ -1,4 +1,5 @@
 dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Delhi,hybrid_top8,hybrid,mcar,6.903,4.616,0.2556,0.1249,0.8204,0.2887,12.4,45465
 Delhi,tensor_cp,tensor,mcar,6.468,4.178,0.2571,0.114,0.8183,0.2847,0.0,45465
 Delhi,fcm_svr,hybrid,mcar,14.399,8.86,0.3607,0.1975,0.6424,-0.0036,0.3,45465
 Delhi,som_lssvm,hybrid,mcar,14.894,9.372,0.3638,0.2055,0.6361,-0.0124,1.5,45465
@@ -21,6 +22,7 @@ Delhi,rbi,ratio,mcar,23.925,14.18,0.8713,0.516,-1.0867,-1.4243,0.0,45465
 Delhi,irbi,ratio,mcar,23.98,14.126,0.9094,0.5427,-1.2732,-1.5303,0.1,45465
 Delhi,bayesnet_chowliu,EM/MLE,outage,26.139,18.757,0.5696,0.3778,0.1142,0.1909,0.1,46724
 Delhi,grey_fcm,fuzzy,outage,26.633,19.301,0.5734,0.3833,0.1025,0.1856,0.1,46724
+Delhi,hybrid_top8,hybrid,outage,18.858,13.283,0.5827,0.3412,0.073,0.1723,12.2,46724
 Delhi,mkl_cluster,hybrid,outage,21.791,14.346,0.5925,0.3639,0.0415,0.1583,0.8,46724
 Delhi,irbi,ratio,outage,19.454,13.547,0.6071,0.3606,-0.006,0.1377,0.1,46724
 Delhi,rbi,ratio,outage,19.454,13.547,0.6071,0.3606,-0.006,0.1377,0.0,46724

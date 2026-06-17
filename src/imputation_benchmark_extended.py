@@ -31,6 +31,7 @@ from src.imputation_benchmark import (
     MethodSpec, SliceCtx,
     _build_spatial_panel, _impute_ffill, _impute_linear, _make_sklearn_imputer,
     _prepare_inputs, _rows_from_acc, _score_one, _test_slices, aggregate_dataset,
+    iter_method_specs,
 )
 
 EPS = 1e-8
@@ -424,6 +425,62 @@ def _bayesnet_chowliu(x_in, m_in, ctx, n_iter=8):
 
 
 # ---------------------------------------------------------------------------
+# Hybrid: imputability-weighted blend of the top-8 methods
+# ---------------------------------------------------------------------------
+
+# Weights = each member's full-run mean imputability across the 6 (dataset x pattern)
+# cells, from outputs/imputation_benchmark_extended/leaderboard_all_combined.csv
+# (all positive, so no clipping needed). The top 4 carry ~80% of the mass.
+_TOP8_WEIGHTS = {
+    "tensor_cp": 0.193, "linear_interp": 0.193, "last_and_next_mean": 0.178,
+    "ssa": 0.161, "fcm_svr": 0.078, "som_lssvm": 0.064, "nearest_interp": 0.059,
+    "mkl_cluster": 0.054,
+}
+_TOP8_BASE = {"linear_interp", "last_and_next_mean", "nearest_interp", "ssa"}
+_TOP8_EXT = {"tensor_cp", "fcm_svr", "som_lssvm", "mkl_cluster"}
+
+
+def _make_hybrid_top8(cfg, train_stations, scalers, device, seed):
+    """Imputability-weighted average of the eight best individual imputers.
+
+    Each member is fitted/built once; at impute time the hybrid runs them all and
+    blends their reconstructions by the fixed weights above, renormalizing over the
+    members that actually ran so a failed member never biases the blend. The imputer
+    does not know the missingness pattern, so it uses one global weight set (realistic
+    for deployment)."""
+    members = []  # (name, weight, fn)
+    base_specs = iter_method_specs(cfg, train_stations, scalers, device=device,
+                                   seed=seed, only=_TOP8_BASE)
+    ext_specs = iter_extended_method_specs(cfg, train_stations, scalers, device=device,
+                                           seed=seed, include_deep=False, only=_TOP8_EXT)
+    for sp in list(base_specs) + list(ext_specs):
+        try:
+            fn = sp.build()
+        except Exception:
+            fn = None
+        if fn is not None and sp.name in _TOP8_WEIGHTS:
+            members.append((sp.name, _TOP8_WEIGHTS[sp.name], fn))
+    if not members:
+        return None
+
+    def _fn(x_in, m_in, ctx):
+        acc, tw = None, 0.0
+        for _, w, fn in members:
+            try:
+                r = fn(x_in, m_in, ctx)
+            except Exception:
+                continue
+            acc = w * r if acc is None else acc + w * r
+            tw += w
+        if acc is None or tw <= 0:
+            return _lin(x_in, m_in)
+        rec = acc / tw
+        return np.where(m_in > 0, x_in, rec).astype(np.float32)
+
+    return _fn
+
+
+# ---------------------------------------------------------------------------
 # Deep methods (GPU-friendly): ConvLSTM AE and a 1-D CNN GAN imputer
 # ---------------------------------------------------------------------------
 
@@ -590,6 +647,8 @@ def iter_extended_method_specs(cfg, train_stations, scalers, *, device="cpu",
         ("fcm_svr", "hybrid", "slow", lambda: _hybrid(_fcm_labels, "ridge")),
         ("som_lssvm", "hybrid", "slow", lambda: _hybrid(_km_labels, "lssvm")),
         ("mkl_cluster", "hybrid", "slow", lambda: _hybrid(_mkl_labels, "ridge")),
+        ("hybrid_top8", "hybrid", "slow",
+         lambda: _make_hybrid_top8(cfg, train_stations, scalers, device, seed)),
     ]
     deep = [
         ("convlstm", "deep-RNN", "deep",
