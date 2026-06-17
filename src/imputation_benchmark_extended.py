@@ -355,11 +355,28 @@ def _fcm_labels(X, kk):
     return KMeans(n_clusters=kk, n_init=2, random_state=1).fit_predict(X)
 
 
-def _mkl_labels(X, kk):
-    """Multiple-kernel clustering: spectral clustering on an averaged linear+RBF gram."""
+def _mkl_labels(X, kk, cap=1500):
+    """Multiple-kernel clustering: spectral clustering on an RBF affinity.
+
+    Spectral clustering is ~O(N^3); on long station slices that is the only method
+    that would balloon to hours. We fit it on a capped random subsample, then assign
+    every row to the nearest cluster centroid — keeping the whole run fast and bounded.
+    """
     from sklearn.cluster import SpectralClustering
-    return SpectralClustering(n_clusters=kk, affinity="rbf", random_state=0,
-                              assign_labels="discretize").fit_predict(X)
+    sc = lambda Z: SpectralClustering(n_clusters=kk, affinity="rbf", random_state=0,
+                                      n_init=3, assign_labels="kmeans").fit_predict(Z)
+    cap = min(cap, 800)
+    N = len(X)
+    if N <= cap:
+        return sc(X)
+    rng = np.random.default_rng(0)
+    idx = rng.choice(N, cap, replace=False)
+    sub = X[idx]
+    lab = sc(sub)
+    cents = np.array([sub[lab == c].mean(0) if (lab == c).any() else sub[0]
+                      for c in range(kk)])
+    d = ((X[:, None, :] - cents[None, :, :]) ** 2).sum(axis=2)   # (N, kk)
+    return d.argmin(axis=1)
 
 
 def _hybrid(clusterer, regressor_kind):
