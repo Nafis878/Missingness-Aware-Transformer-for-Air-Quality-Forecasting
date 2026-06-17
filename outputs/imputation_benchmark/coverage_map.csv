@@ -1,0 +1,97 @@
+technique,status,mapped_to,note
+Row mean,subsumed,mean,cross-sectional mean ~ mean baseline
+Mean top-bottom,subsumed,last_and_next_mean,avg of neighbours
+Hour mean,run,hour_mean,
+6-hour mean,subsumed,hour_mean,coarser hour-grouping variant
+12-hour mean,subsumed,hour_mean,coarser hour-grouping variant
+Daily mean,run,daily_mean,
+Last-and-next mean,run,last_and_next_mean,
+Previous-year mean,subsumed,daily_mean,calendar-group mean; <3y limits a full lag
+Conditional mean imputation,run,mice,regression conditional mean
+Stochastic regression,run,stochastic_regression,
+ARMA,subsumed,arima,ARMA = ARIMA(d=0)
+ARIMA,run,arima,
+Linear interpolation,run,linear_interp,
+Cubic interpolation,run,cubic_spline,
+Inverse distance weighting,run,spatial_idw,equal-weight stand-in: no station coords
+Kriging,skipped,,needs station lat/lon coordinates (not in dataset)
+Optimal interpolation,subsumed,spatial_idw,cross-station weighting stand-in
+Nearest neighbor,run,nearest_neighbor,
+Hot deck,subsumed,nearest_neighbor,donor = nearest observed row
+Cold deck,skipped,,needs an external donor dataset
+Multiple imputation,run,mice,MICE is the canonical MI engine
+Maximum Likelihood Imputation (MLI),run,em_gaussian,
+Expectation Maximization (EM),run,em_gaussian,
+Full Information ML (FIML),subsumed,em_gaussian,Gaussian EM gives the FIML estimates
+Probabilistic Matrix Factorization (PMF),run,matrix_factorization,
+Singular Value Decomposition (SVD),run,iterative_svd,
+Tensor decomposition,skipped,,no natural 3rd mode here; deferred
+Principal Component Analysis (PCA),run,iterative_svd,iterative PCA completion
+Probabilistic PCA (PPCA),run,ppca,
+Bayesian PCA (BPCA),subsumed,ppca,PPCA is the point-estimate special case
+K-Nearest Neighbor (KNN),run,knn,
+Weighted KNN,run,weighted_knn,
+Sequential KNN,subsumed,knn,ordered-variable KNN; same engine
+Gray KNN,skipped,,no public reference implementation
+Modified/purity-based KNN,skipped,,no public reference implementation
+Box-Jenkins time-series,subsumed,arima,Box-Jenkins = ARIMA identification
+Kalman filter / smoothing / state-space,run,kalman_smoother,
+Singular Spectrum Analysis (SSA),run,ssa,
+Kernel-based imputation,skipped,,bespoke; no standard impl
+Mixture-kernel imputation,skipped,,bespoke; no standard impl
+Ratio-Based Imputation (RBI),skipped,,no public reference implementation
+Iterative RBI (IRBI),skipped,,no public reference implementation
+Bayesian imputation,subsumed,stochastic_regression,posterior-sampling MICE
+MCMC / Data Augmentation,subsumed,stochastic_regression,chained posterior draws
+MICE,run,mice,
+EM with Bootstrapping (EMB / Amelia II),run,emb_bootstrap,
+Multilayer Perceptron (MLP),run,autoencoder,MLP autoencoder
+Radial Basis Function (RBF),skipped,,no standard RBF-net imputer
+Auto-associative neural network,subsumed,autoencoder,auto-associative = autoencoder
+Probabilistic Neural Network (PNN),skipped,,"classifier, not an imputer"
+Bayesian network imputation,skipped,,needs a hand-built DAG
+Support Vector Machine (SVM),run,svr_regression,
+Least-Squares SVM,subsumed,svr_regression,LS-SVM ~ SVR variant
+Decision Tree (ID3/C4.5/CART),run,decision_tree_cart,CART regressor
+EMI/DMI/SiMI tree extensions,skipped,,bespoke research artifacts
+Random Forest / MissForest,run,missforest_rf,
+RF proximity/on-the-fly/multivariate,subsumed,missforest_rf,same RF engine
+Single-view clustering,run,kmeans,
+Multi-view / subspace / MKL clustering,skipped,,bespoke; no standard impl
+k-means clustering,run,kmeans,
+Self-Organizing Map (SOM),run,som,
+Fuzzy rule-based / fuzzy rough,skipped,,bespoke; no standard impl
+Fuzzy clustering / c-means / k-means,run,fuzzy_cmeans,
+Fuzzy neighborhood density clustering,skipped,,bespoke; no standard impl
+Grey-system fuzzy c-means,skipped,,bespoke; no standard impl
+Iterative fuzzy k-means / IFC,subsumed,fuzzy_cmeans,iterative FCM variant
+DFIC / D-ANFIS,skipped,,bespoke research artifacts
+Deep autoencoder,run,autoencoder,
+Backpropagation autoencoder,subsumed,autoencoder,standard BP-trained AE
+Variational autoencoder,run,gpvae,GP-VAE (temporal VAE)
+Denoising autoencoder,run,denoising_ae,
+Stacked / multimodal denoising AE,subsumed,denoising_ae,deeper DAE variant
+RNN,subsumed,brits,recurrent imputation
+GRU,subsumed,grud,
+LSTM,subsumed,brits,BRITS uses LSTM cells
+ConvLSTM,skipped,,no standard imputation impl
+Transfer/iterative LSTM imputation,subsumed,brits,same recurrent engine
+GRU-D,run,grud,
+M-RNN,run,mrnn,
+CNN / ST-spectral CNN,subsumed,timesnet,TimesNet uses 2D conv inception blocks
+GAN,subsumed,usgan,
+GAIN,subsumed,usgan,US-GAN adversarial imputer
+Multi-channel CNN + DCGAN,skipped,,bespoke; no standard impl
+SAITS / Transformer imputation,run,saits,
+CSDI (diffusion),run,csdi,
+TimesNet,run,timesnet,
+Hybrid: MICE + KNN,subsumed,mice,components benchmarked separately
+Hybrid: FCM + SVR + GA,skipped,,bespoke pipeline
+Hybrid: SOM + FOA + LS-SVM,skipped,,bespoke pipeline
+Hybrid: multiple kernel clustering,skipped,,bespoke; no standard impl
+Hybrid: bagging / block-bootstrap,subsumed,emb_bootstrap,bootstrap ensembling
+Hybrid: Stineman / weighted moving avg,subsumed,last_and_next_mean,interp/MA hybrids
+Hybrid: Kalman-filter hybrids,subsumed,kalman_smoother,
+Hybrid: KNN + penalized dissimilarity,subsumed,weighted_knn,
+Hybrid: SOM + KNN ensemble,subsumed,som,components benchmarked separately
+Hybrid: LSTM + transfer / bidirectional,subsumed,brits,BRITS is bidirectional

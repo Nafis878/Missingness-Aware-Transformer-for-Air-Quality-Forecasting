@@ -98,6 +98,111 @@ pipeline as an external-validity check; see [`COLAB.md`](COLAB.md). The
 submission-ready manuscript is in [`paper/`](paper/) (build with
 `latexmk -pdf main.tex`).
 
+## Imputation-techniques benchmark (73 techniques covered)
+
+Beyond the forecasting study, we benchmarked a **broad imputation taxonomy** as a
+pure *reconstruction* task: hide observed test-period cells, reconstruct them, and
+score on the hidden cells only via the same **imputability** axis used above
+(`imputability = 1 − RMSE_method / RMSE_forward_fill`; **> 0 beats forward-fill**,
+= 0 is forward-fill itself). The full run covers **40 reference implementations ×
+3 datasets (Dhaka/Beijing/Delhi) × 2 missingness patterns (MCAR + outage)**.
+
+Of a 96-technique survey taxonomy, **73 are covered**: **39 run** as
+real reference implementations and **34 subsumed** into a mathematically/
+practically equivalent run method (e.g. ARMA ⊂ ARIMA, LSTM ⊂ BRITS, BPCA ⊂ PPCA).
+The remaining 23 are skipped (no public implementation, or they need station
+coordinates / external donor data we don't have) — see
+[`outputs/imputation_benchmark/coverage_map.csv`](outputs/imputation_benchmark/coverage_map.csv).
+
+The table below lists every covered technique with the method it was run as, its
+family, the **best imputability** that method achieved across all six
+(dataset × pattern) cells, and **how many of those six cells it beats forward-fill**
+(`Beats FF`). Subsumed techniques inherit their run method's numbers. Full
+analysis, per-dataset leaderboards and figures:
+[`outputs/imputation_benchmark/ANALYSIS.md`](outputs/imputation_benchmark/ANALYSIS.md).
+
+> **Headline:** simple temporal methods win — `linear_interp`, `last_and_next_mean`,
+> `ssa` beat every multivariate-ML and deep imputer; most learned methods land below
+> forward-fill. `spatial_idw` is the standout for contiguous outages (Beijing +0.51).
+> `csdi` diverged numerically in this run (negative, unusable) and is reported as-is
+> but excluded from the figures — do not quote its numbers.
+
+| # | Technique (taxonomy) | Status | Implemented as | Family | Best imputability | Beats FF |
+|---:|---|---|---|---|---:|:--:|
+| 1 | Row mean | subsumed | `mean` | mean-based | -0.027 | 0/6 |
+| 2 | Mean top-bottom | subsumed | `last_and_next_mean` | mean-based | +0.265 | 6/6 |
+| 3 | Hour mean | **run** | `hour_mean` | mean-based | +0.287 | 2/6 |
+| 4 | 6-hour mean | subsumed | `hour_mean` | mean-based | +0.287 | 2/6 |
+| 5 | 12-hour mean | subsumed | `hour_mean` | mean-based | +0.287 | 2/6 |
+| 6 | Daily mean | **run** | `daily_mean` | mean-based | +0.095 | 3/6 |
+| 7 | Last-and-next mean | **run** | `last_and_next_mean` | mean-based | +0.265 | 6/6 |
+| 8 | Previous-year mean | subsumed | `daily_mean` | mean-based | +0.095 | 3/6 |
+| 9 | Conditional mean imputation | **run** | `mice` | regression/MICE | +0.122 | 2/6 |
+| 10 | Stochastic regression | **run** | `stochastic_regression` | regression/MICE | -0.218 | 0/6 |
+| 11 | ARMA | subsumed | `arima` | state-space | +0.158 | 5/6 |
+| 12 | ARIMA | **run** | `arima` | state-space | +0.158 | 5/6 |
+| 13 | Linear interpolation | **run** | `linear_interp` | interpolation | +0.285 | 6/6 |
+| 14 | Cubic interpolation | **run** | `cubic_spline` | interpolation | +0.136 | 2/6 |
+| 15 | Inverse distance weighting | **run** | `spatial_idw` | spatial | +0.507 | 3/6 |
+| 16 | Optimal interpolation | subsumed | `spatial_idw` | spatial | +0.507 | 3/6 |
+| 17 | Nearest neighbor | **run** | `nearest_neighbor` | proximity | -0.179 | 0/6 |
+| 18 | Hot deck | subsumed | `nearest_neighbor` | proximity | -0.179 | 0/6 |
+| 19 | Multiple imputation | **run** | `mice` | regression/MICE | +0.122 | 2/6 |
+| 20 | Maximum Likelihood Imputation (MLI) | **run** | `em_gaussian` | EM/MLE | +0.184 | 1/6 |
+| 21 | Expectation Maximization (EM) | **run** | `em_gaussian` | EM/MLE | +0.184 | 1/6 |
+| 22 | Full Information ML (FIML) | subsumed | `em_gaussian` | EM/MLE | +0.184 | 1/6 |
+| 23 | Probabilistic Matrix Factorization (PMF) | **run** | `matrix_factorization` | matrix/PCA | -0.081 | 0/6 |
+| 24 | Singular Value Decomposition (SVD) | **run** | `iterative_svd` | matrix/PCA | -0.027 | 0/6 |
+| 25 | Principal Component Analysis (PCA) | **run** | `iterative_svd` | matrix/PCA | -0.027 | 0/6 |
+| 26 | Probabilistic PCA (PPCA) | **run** | `ppca` | matrix/PCA | +0.184 | 1/6 |
+| 27 | Bayesian PCA (BPCA) | subsumed | `ppca` | matrix/PCA | +0.184 | 1/6 |
+| 28 | K-Nearest Neighbor (KNN) | **run** | `knn` | proximity | +0.072 | 2/6 |
+| 29 | Weighted KNN | **run** | `weighted_knn` | proximity | +0.072 | 2/6 |
+| 30 | Sequential KNN | subsumed | `knn` | proximity | +0.072 | 2/6 |
+| 31 | Box-Jenkins time-series | subsumed | `arima` | state-space | +0.158 | 5/6 |
+| 32 | Kalman filter / smoothing / state-space | **run** | `kalman_smoother` | state-space | -0.027 | 0/6 |
+| 33 | Singular Spectrum Analysis (SSA) | **run** | `ssa` | state-space | +0.212 | 6/6 |
+| 34 | Bayesian imputation | subsumed | `stochastic_regression` | regression/MICE | -0.218 | 0/6 |
+| 35 | MCMC / Data Augmentation | subsumed | `stochastic_regression` | regression/MICE | -0.218 | 0/6 |
+| 36 | MICE | **run** | `mice` | regression/MICE | +0.122 | 2/6 |
+| 37 | EM with Bootstrapping (EMB / Amelia II) | **run** | `emb_bootstrap` | EM/MLE | +0.184 | 1/6 |
+| 38 | Multilayer Perceptron (MLP) | **run** | `autoencoder` | deep-AE | -0.027 | 0/6 |
+| 39 | Auto-associative neural network | subsumed | `autoencoder` | deep-AE | -0.027 | 0/6 |
+| 40 | Support Vector Machine (SVM) | **run** | `svr_regression` | ML-SVM | +0.034 | 1/6 |
+| 41 | Least-Squares SVM | subsumed | `svr_regression` | ML-SVM | +0.034 | 1/6 |
+| 42 | Decision Tree (ID3/C4.5/CART) | **run** | `decision_tree_cart` | ML-tree | -0.107 | 0/6 |
+| 43 | Random Forest / MissForest | **run** | `missforest_rf` | ML-tree | +0.052 | 1/6 |
+| 44 | RF proximity/on-the-fly/multivariate | subsumed | `missforest_rf` | ML-tree | +0.052 | 1/6 |
+| 45 | Single-view clustering | **run** | `kmeans` | clustering | -0.026 | 0/6 |
+| 46 | k-means clustering | **run** | `kmeans` | clustering | -0.026 | 0/6 |
+| 47 | Self-Organizing Map (SOM) | **run** | `som` | clustering | -0.126 | 0/6 |
+| 48 | Fuzzy clustering / c-means / k-means | **run** | `fuzzy_cmeans` | fuzzy | -0.025 | 0/6 |
+| 49 | Iterative fuzzy k-means / IFC | subsumed | `fuzzy_cmeans` | fuzzy | -0.025 | 0/6 |
+| 50 | Deep autoencoder | **run** | `autoencoder` | deep-AE | -0.027 | 0/6 |
+| 51 | Backpropagation autoencoder | subsumed | `autoencoder` | deep-AE | -0.027 | 0/6 |
+| 52 | Variational autoencoder | **run** | `gpvae` | deep-AE | -0.028 | 0/6 |
+| 53 | Denoising autoencoder | **run** | `denoising_ae` | deep-AE | -0.030 | 0/6 |
+| 54 | Stacked / multimodal denoising AE | subsumed | `denoising_ae` | deep-AE | -0.030 | 0/6 |
+| 55 | RNN | subsumed | `brits` | deep-RNN | +0.117 | 3/6 |
+| 56 | GRU | subsumed | `grud` | deep-RNN | +0.076 | 1/6 |
+| 57 | LSTM | subsumed | `brits` | deep-RNN | +0.117 | 3/6 |
+| 58 | Transfer/iterative LSTM imputation | subsumed | `brits` | deep-RNN | +0.117 | 3/6 |
+| 59 | GRU-D | **run** | `grud` | deep-RNN | +0.076 | 1/6 |
+| 60 | M-RNN | **run** | `mrnn` | deep-RNN | -0.072 | 0/6 |
+| 61 | CNN / ST-spectral CNN | subsumed | `timesnet` | deep-attention | +0.116 | 2/6 |
+| 62 | GAN | subsumed | `usgan` | deep-GAN | +0.151 | 2/6 |
+| 63 | GAIN | subsumed | `usgan` | deep-GAN | +0.151 | 2/6 |
+| 64 | SAITS / Transformer imputation | **run** | `saits` | deep-attention | +0.086 | 2/6 |
+| 65 | CSDI (diffusion) | **run** | `csdi` | deep-attention | -1.589 | 0/6 |
+| 66 | TimesNet | **run** | `timesnet` | deep-attention | +0.116 | 2/6 |
+| 67 | Hybrid: MICE + KNN | subsumed | `mice` | regression/MICE | +0.122 | 2/6 |
+| 68 | Hybrid: bagging / block-bootstrap | subsumed | `emb_bootstrap` | EM/MLE | +0.184 | 1/6 |
+| 69 | Hybrid: Stineman / weighted moving avg | subsumed | `last_and_next_mean` | mean-based | +0.265 | 6/6 |
+| 70 | Hybrid: Kalman-filter hybrids | subsumed | `kalman_smoother` | state-space | -0.027 | 0/6 |
+| 71 | Hybrid: KNN + penalized dissimilarity | subsumed | `weighted_knn` | proximity | +0.072 | 2/6 |
+| 72 | Hybrid: SOM + KNN ensemble | subsumed | `som` | clustering | -0.126 | 0/6 |
+| 73 | Hybrid: LSTM + transfer / bidirectional | subsumed | `brits` | deep-RNN | +0.117 | 3/6 |
+
 ## Data
 
 Hourly air quality + meteorology from 16 CAMS monitoring stations across
