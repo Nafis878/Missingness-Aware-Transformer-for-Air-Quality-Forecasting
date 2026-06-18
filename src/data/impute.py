@@ -127,6 +127,11 @@ def impute_full_series(
 
         return impute_full_series_saits(stations, cfg, seed)
 
+    if method == "hybrid8":
+        from src.imputation_benchmark_extended import impute_full_series_hybrid8
+
+        return impute_full_series_hybrid8(stations, cfg, seed)
+
     from sklearn.experimental import enable_iterative_imputer  # noqa: F401
     from sklearn.impute import IterativeImputer, KNNImputer
 
@@ -267,15 +272,25 @@ def corrupt_test_outages(
 
 
 def replace_inputs(
-    stations: list[StationArrays], imputed: list[np.ndarray]
+    stations: list[StationArrays],
+    imputed: list[np.ndarray],
+    *,
+    preserve_mask: bool = False,
 ) -> list[StationArrays]:
-    """Clone station arrays with imputed inputs and all-ones masks.
+    """Clone station arrays with imputed inputs.
 
     Targets (``raw_targets``) and times are untouched, so window enumeration
     and evaluation are identical to the non-imputed datasets.
+
+    By default the observation mask is set to all ones, which matches a
+    classical impute-then-forecast pipeline: downstream models treat the
+    reconstructed inputs as complete. ``preserve_mask=True`` keeps the original
+    mask while replacing the values, useful for mask-aware models that should
+    know which inputs are measured and which are imputed.
     """
     out = []
     for st, vals in zip(stations, imputed):
         assert vals.shape == st.values.shape
-        out.append(replace(st, values=vals, mask=np.ones_like(st.mask)))
+        mask = st.mask if preserve_mask else np.ones_like(st.mask)
+        out.append(replace(st, values=vals, mask=mask.copy()))
     return out

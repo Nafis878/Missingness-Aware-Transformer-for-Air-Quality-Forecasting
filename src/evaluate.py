@@ -62,6 +62,10 @@ MODEL_LABELS = {
     "proposed": "Proposed (MAT)",
     "variant_B": "Proposed (variant B)",
     "proposed_md": "Proposed + miss-dropout",
+    "hybrid8_masked_transformer": "Hybrid8 + mask (Transformer)",
+    "hybrid8_masked_proposed": "Hybrid8 + mask (MAT)",
+    "hybrid8_masked_variant_B": "Hybrid8 + mask (variant B)",
+    "hybrid8_masked_proposed_md": "Hybrid8 + mask + miss-dropout",
 }
 
 #: Deterministic single-run baselines (no seed sensitivity by construction).
@@ -71,6 +75,8 @@ LEARNED_MODELS = [
     "lstm", "gru", "gru_d", "dlinear", "patchtst",
     "two_stage_knn", "two_stage_mice", "two_stage_saits",
     "proposed", "variant_B", "proposed_md",
+    "hybrid8_masked_transformer", "hybrid8_masked_proposed",
+    "hybrid8_masked_variant_B", "hybrid8_masked_proposed_md",
 ]
 
 

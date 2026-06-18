@@ -480,6 +480,50 @@ def _make_hybrid_top8(cfg, train_stations, scalers, device, seed):
     return _fn
 
 
+def impute_full_series_hybrid8(stations, cfg, seed):
+    """Impute every station's FULL series with hybrid_top8 (for impute-then-forecast).
+
+    Matches the ``src.data.impute.impute_full_series`` contract: returns one
+    ``(N_station, V)`` float32 array per station, observed cells preserved. The top-8
+    members are transductive (no train/test split needed) and pattern-agnostic, so the
+    blend is applied to each station's whole series at once. The result is deterministic,
+    so it is cached to ``<processed_dir>/_hybrid8_imputed.npz`` and reused across seeds.
+    """
+    import json
+
+    proc = cfg["paths"]["processed_dir"]
+    feats = feature_columns(cfg)
+    train_end = str(cfg["splits"]["train_end"])
+    cache = os.path.join(proc, "_hybrid8_imputed.npz")
+    if os.path.exists(cache):
+        try:
+            z = np.load(cache, allow_pickle=True)
+            if str(z["train_end"]) == train_end and int(z["n"]) == len(stations):
+                out = [z[f"s{i}"].astype(np.float32) for i in range(len(stations))]
+                if all(out[i].shape == stations[i].values.shape for i in range(len(out))):
+                    return out
+        except Exception:
+            pass
+
+    with open(os.path.join(proc, "scalers.json")) as fh:
+        scalers = json.load(fh)
+    fn = _make_hybrid_top8(cfg, stations, scalers, "cpu", seed)
+    if fn is None:                                   # extreme fallback
+        fn = lambda x, m, c: _lin(x, m)              # noqa: E731
+
+    out = []
+    for st in stations:
+        ctx = SliceCtx(times=st.times, var_names=feats,
+                       station_id=st.station_id, spatial=None)
+        out.append(np.asarray(fn(st.values, st.mask, ctx), dtype=np.float32))
+    try:
+        np.savez(cache, train_end=train_end, n=len(stations),
+                 **{f"s{i}": out[i] for i in range(len(out))})
+    except Exception:
+        pass
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Deep methods (GPU-friendly): ConvLSTM AE and a 1-D CNN GAN imputer
 # ---------------------------------------------------------------------------

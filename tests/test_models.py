@@ -144,6 +144,24 @@ def test_replace_inputs_keeps_targets_and_windows() -> None:
     assert (b["values"] == 7.0).all() and (b["mask"] == 1).all()
 
 
+def test_replace_inputs_can_preserve_original_mask() -> None:
+    cfg = make_cfg()
+    df = make_frame()
+    df.loc[30:70, "PM2.5"] = np.nan
+    stations = _build(cfg, df)
+    fake_imputed = [np.full_like(st.values, 7.0) for st in stations]
+    swapped = replace_inputs(stations, fake_imputed, preserve_mask=True)
+    ds_orig = AirQualityWindowDataset(stations, "test", cfg)
+    ds_swap = AirQualityWindowDataset(swapped, "test", cfg)
+
+    assert np.array_equal(ds_orig.index, ds_swap.index)
+    a, b = ds_orig[0], ds_swap[0]
+    assert torch.equal(a["targets"], b["targets"])
+    assert torch.equal(a["target_mask"], b["target_mask"])
+    assert torch.equal(a["mask"], b["mask"])
+    assert (b["values"] == 7.0).all()
+
+
 def test_corrupt_test_outages_blocks_and_targets() -> None:
     from src.data.impute import corrupt_test_outages
 

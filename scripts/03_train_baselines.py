@@ -43,9 +43,18 @@ from src.utils import load_config, seed_everything, setup_logging
 logger = logging.getLogger("03_train_baselines")
 
 STATISTICAL_MODELS = ["persistence", "seasonal_naive", "sarima"]
+HYBRID8_STATISTICAL_MODELS = [
+    "hybrid8_persistence", "hybrid8_seasonal_naive", "hybrid8_sarima",
+]
 LEARNED_MODELS = ["lstm", "gru", "gru_d", "dlinear", "patchtst",
-                  "two_stage_knn", "two_stage_mice", "two_stage_saits"]
-ALL_MODELS = STATISTICAL_MODELS + LEARNED_MODELS
+                  "two_stage_knn", "two_stage_mice", "two_stage_saits",
+                  "hybrid8_lstm", "hybrid8_gru", "hybrid8_gru_d",
+                  "hybrid8_dlinear", "hybrid8_patchtst",
+                  "hybrid8_transformer", "hybrid8_proposed",
+                  "hybrid8_variant_B", "hybrid8_proposed_md",
+                  "hybrid8_masked_transformer", "hybrid8_masked_proposed",
+                  "hybrid8_masked_variant_B", "hybrid8_masked_proposed_md"]
+ALL_MODELS = STATISTICAL_MODELS + HYBRID8_STATISTICAL_MODELS + LEARNED_MODELS
 
 
 def quick_pm25_rmse(npz_path: Path, cfg: dict, scalers: dict) -> dict[str, float]:
@@ -65,15 +74,30 @@ def quick_pm25_rmse(npz_path: Path, cfg: dict, scalers: dict) -> dict[str, float
 
 
 def run_statistical(name: str, datasets, stations, cfg) -> None:
+    from src.data.dataset import AirQualityWindowDataset
+    from src.data.impute import impute_full_series, replace_inputs
     from src.models.statistical import predict_sarima, predict_statistical
     from src.train import save_predictions, save_stats
 
-    ds = datasets["test"]
     t0 = time.perf_counter()
-    if name == "sarima":
-        preds = predict_sarima(ds, stations, cfg)
+    method = name
+    impute_time = None
+    stat_stations = stations
+    if name.startswith("hybrid8_"):
+        method = name[8:]
+        t_imp = time.perf_counter()
+        imputed = impute_full_series(stations, cfg, "hybrid8", cfg["seed"])
+        impute_time = time.perf_counter() - t_imp
+        logger.info("hybrid8 imputation took %.1fs", impute_time)
+        stat_stations = replace_inputs(stations, imputed)
+        ds = AirQualityWindowDataset(stat_stations, "test", cfg)
     else:
-        preds = predict_statistical(ds, cfg, name)
+        ds = datasets["test"]
+
+    if method == "sarima":
+        preds = predict_sarima(ds, stat_stations, cfg)
+    else:
+        preds = predict_statistical(ds, cfg, method)
     elapsed = time.perf_counter() - t0
 
     # align with the standard prediction-bundle format
@@ -95,12 +119,15 @@ def run_statistical(name: str, datasets, stations, cfg) -> None:
         "latency_ms_per_window": np.float64(elapsed / max(len(ds), 1) * 1000),
     }
     save_predictions(out, cfg, name)
-    save_stats(
-        {"name": name, "seed": cfg["seed"], "n_parameters": 0,
-         "train_time_s": 0.0 if name != "sarima" else round(elapsed, 1),
-         "latency_ms_per_window": out["latency_ms_per_window"]},
-        cfg, name,
-    )
+    stats = {
+        "name": name, "seed": cfg["seed"], "n_parameters": 0,
+        "train_time_s": 0.0 if method != "sarima" else round(elapsed, 1),
+        "latency_ms_per_window": out["latency_ms_per_window"],
+    }
+    if impute_time is not None:
+        stats["impute_time_s"] = round(impute_time, 1)
+        stats["base_method"] = method
+    save_stats(stats, cfg, name)
 
 
 def run_neural(name: str, datasets, stations, cfg, scalers, seed: int) -> None:
@@ -145,12 +172,54 @@ def run_neural(name: str, datasets, stations, cfg, scalers, seed: int) -> None:
             for split in ("train", "val", "test")
         }
         model = VanillaTransformer(n_feat, n_stations, n_targets, n_horizons, cfg)
+    elif name.startswith("hybrid8_"):
+        # merged top-8 imputer -> same forecasting architecture on imputed inputs
+        from src.models.factory import build_model
+
+        preserve_mask = name.startswith("hybrid8_masked_")
+        prefix_len = len("hybrid8_masked_") if preserve_mask else len("hybrid8_")
+        backbone_name = name[prefix_len:]
+        backbone = {"transformer": "vanilla_transformer"}.get(
+            backbone_name, backbone_name
+        )
+        feats = feature_columns(cfg)
+        t0 = time.perf_counter()
+        imputed = impute_full_series(stations, cfg, "hybrid8", seed)  # cached -> ~0s
+        impute_time = time.perf_counter() - t0
+        logger.info("hybrid8 imputation took %.1fs", impute_time)
+        stations_imp = replace_inputs(stations, imputed, preserve_mask=preserve_mask)
+        wrapped = {
+            split: AirQualityWindowDataset(stations_imp, split, cfg)
+            for split in ("train", "val", "test")
+        }
+        if backbone in ("lstm", "gru"):
+            model = RNNForecaster(
+                n_feat, n_stations, n_targets, n_horizons, backbone, cfg
+            )
+        else:
+            model = build_model(
+                backbone, cfg, n_feat, n_stations, n_targets, n_horizons,
+                target_indices=[feats.index(p)
+                                for p in cfg["dataset"]["target_pollutants"]],
+                target_feature_idx=feats.index(cfg["dataset"]["primary_target"]),
+            )
+        if backbone == "proposed_md":
+            from src.data.dataset import RandomMissingnessAugment
+
+            wrapped = dict(wrapped)
+            wrapped["train"] = RandomMissingnessAugment(
+                wrapped["train"], max_level=0.5, seed=seed
+            )
     else:
         raise ValueError(name)
 
     stats = train_model(model, wrapped["train"], wrapped["val"], cfg, name, seed)
-    if name.startswith("two_stage"):
+    if name.startswith("two_stage") or name.startswith("hybrid8_"):
         stats["impute_time_s"] = round(impute_time, 1)
+    if name.startswith("hybrid8_"):
+        stats["base_model"] = backbone_name
+        stats["imputer"] = "hybrid_top8"
+        stats["preserve_original_mask"] = preserve_mask
     out = predict(model, wrapped["test"], cfg)
     stats["latency_ms_per_window"] = float(out["latency_ms_per_window"])
     save_predictions(out, cfg, f"{name}_s{seed}", subdir="seeds")
@@ -205,8 +274,9 @@ def main() -> None:
              if args.seeds else list(cfg["ablation"]["seeds"]))
     pred_dir = Path(cfg["paths"]["predictions_dir"])
 
+    statistical_names = set(STATISTICAL_MODELS) | set(HYBRID8_STATISTICAL_MODELS)
     for name in models:
-        if name in STATISTICAL_MODELS:
+        if name in statistical_names:
             if not args.force and (pred_dir / f"{name}_test.npz").exists():
                 logger.info("=== %s: bundle exists, skipping ===", name)
                 continue
