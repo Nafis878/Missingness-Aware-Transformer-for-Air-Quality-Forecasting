@@ -57,12 +57,18 @@ separately in the tables and is not the same claim.
 
 Key artifacts:
 
+- Winner summary:
+  [`outputs/FINAL_WINNER.md`](outputs/FINAL_WINNER.md)
 - Final comparison table:
   [`outputs/tables/final_mat_ensemble_comparison_summary.csv`](outputs/tables/final_mat_ensemble_comparison_summary.csv)
 - Combined significance table:
   [`outputs/tables/combined_seed_significance_validation_convex_intercept_stack.csv`](outputs/tables/combined_seed_significance_validation_convex_intercept_stack.csv)
 - Validation-calibrated ensemble summary:
   [`outputs/tables/validation_calibrated_ensemble_summary.csv`](outputs/tables/validation_calibrated_ensemble_summary.csv)
+- Winning model test predictions:
+  [`outputs/predictions/seeds/validation_convex_intercept_stack_s42_test.npz`](outputs/predictions/seeds/validation_convex_intercept_stack_s42_test.npz),
+  [`outputs/predictions/seeds/validation_convex_intercept_stack_s43_test.npz`](outputs/predictions/seeds/validation_convex_intercept_stack_s43_test.npz),
+  [`outputs/predictions/seeds/validation_convex_intercept_stack_s44_test.npz`](outputs/predictions/seeds/validation_convex_intercept_stack_s44_test.npz)
 - Q1 comparison figures:
   [`outputs/figures/q1_final_mat_ensemble_summary_panel.png`](outputs/figures/q1_final_mat_ensemble_summary_panel.png)
 - Draft Q1 journal manuscript:
