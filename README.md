@@ -33,6 +33,73 @@ learned models are trained with **3 seeds (42/43/44)** and reported as
 **mean ± std** — no single-seed number is ever reported where a multi-seed
 one exists.
 
+## 2026 Q1 update: final MAT ensemble
+
+The latest paper-facing result is a **validation-calibrated MAT ensemble**
+(`validation_convex_intercept_stack`). It uses validation-only calibration over
+the MAT/Transformer family and is the final model used for the Q1 comparison
+figures and manuscript assets.
+
+PM2.5 test RMSE (ug/m3), 3-seed mean:
+
+| Model | 6 h | 24 h | 72 h |
+|---|---:|---:|---:|
+| Vanilla Transformer | 68.61 | 78.31 | 81.83 |
+| Variant B dual-input ridge | 67.28 | 75.08 | 79.33 |
+| **Final validation-calibrated MAT ensemble** | **65.78** | **74.23** | **77.55** |
+
+The final ensemble is the overall RMSE winner at all three horizons. It is
+directionally better across all seeds and passes combined seed-level
+Diebold-Mariano testing with Holm correction in **42/42 model-horizon
+comparisons**. This is a combined seed-level significance claim; the stricter
+requirement that every individual seed p-value is below 0.05 is reported
+separately in the tables and is not the same claim.
+
+Key artifacts:
+
+- Final comparison table:
+  [`outputs/tables/final_mat_ensemble_comparison_summary.csv`](outputs/tables/final_mat_ensemble_comparison_summary.csv)
+- Combined significance table:
+  [`outputs/tables/combined_seed_significance_validation_convex_intercept_stack.csv`](outputs/tables/combined_seed_significance_validation_convex_intercept_stack.csv)
+- Validation-calibrated ensemble summary:
+  [`outputs/tables/validation_calibrated_ensemble_summary.csv`](outputs/tables/validation_calibrated_ensemble_summary.csv)
+- Q1 comparison figures:
+  [`outputs/figures/q1_final_mat_ensemble_summary_panel.png`](outputs/figures/q1_final_mat_ensemble_summary_panel.png)
+- Draft Q1 journal manuscript:
+  [`outputs/Q1_MAT_Ensemble_Journal_Paper.docx`](outputs/Q1_MAT_Ensemble_Journal_Paper.docx)
+
+## Architecture pipeline
+
+```mermaid
+flowchart TD
+    A[Raw multi-station air-quality streams] --> B[Cleaning and temporal alignment]
+    B --> C[Missingness analysis and imputability profiling]
+    C --> D[Imputation benchmark: KNN, MICE, SAITS, classical, tensor, hybrid_top8]
+    C --> E[Native incomplete-stream forecasting]
+    D --> F[Impute-then-forecast Transformer baselines]
+    E --> G[Vanilla Transformer baseline]
+    E --> H[Missingness-Aware Transformer MAT]
+    H --> I[Variant B and missingness-dropout MAT variants]
+    G --> J[Variant B dual-input ridge]
+    I --> J
+    F --> K[Validation-calibrated convex-intercept MAT ensemble]
+    J --> K
+    K --> L[Per-seed test predictions at 6 h, 24 h, 72 h]
+    L --> M[Ablations and DM/bootstrap significance tests]
+    M --> N[Q1 tables, figures, and manuscript DOCX]
+```
+
+Reproduce the new result layer with:
+
+```bash
+python scripts/22_ablation_significance.py
+python scripts/23_overall_model_significance.py
+python scripts/24_validation_calibrated_ensembles.py
+python scripts/27_combined_seed_significance.py
+python scripts/28_make_final_mat_comparison_figures.py
+python scripts/29_write_q1_journal_paper_docx.py
+```
+
 ## Headline results
 
 PM2.5 test RMSE (µg/m³) on the held-out 2024 year, observed targets only,
