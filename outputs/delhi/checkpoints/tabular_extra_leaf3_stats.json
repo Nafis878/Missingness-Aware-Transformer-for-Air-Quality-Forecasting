@@ -1,0 +1,9 @@
+{
+  "name":"tabular_extra_leaf3",
+  "feature_mode":"full",
+  "n_estimators":700,
+  "min_samples_leaf":3,
+  "max_features":0.6,
+  "train_time_s":11.9,
+  "n_parameters":0
+}

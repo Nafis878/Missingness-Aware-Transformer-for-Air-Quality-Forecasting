@@ -65,5 +65,6 @@
     }
   ],
   "latency_ms_per_window": 1.7953034420938343,
-  "attention_variant": "A"
+  "attention_variant": "A",
+  "peak_memory_mb": 589.0
 }

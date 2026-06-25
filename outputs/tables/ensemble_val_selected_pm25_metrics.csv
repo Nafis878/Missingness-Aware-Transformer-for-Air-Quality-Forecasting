@@ -1,0 +1,7 @@
+split,candidate,horizon,RMSE,MAE,n,dataset
+val,ensemble_val_selected,6,37.34067916870117,25.678386688232422,1186,Dhaka
+val,ensemble_val_selected,24,56.968650817871094,40.22170639038086,1207,Dhaka
+val,ensemble_val_selected,72,66.57551574707031,49.07123565673828,1209,Dhaka
+test,ensemble_val_selected,6,66.28361511230469,32.5758171081543,4459,Dhaka
+test,ensemble_val_selected,24,74.91671752929688,40.96807098388672,4569,Dhaka
+test,ensemble_val_selected,72,77.74080657958984,44.62143325805664,4566,Dhaka

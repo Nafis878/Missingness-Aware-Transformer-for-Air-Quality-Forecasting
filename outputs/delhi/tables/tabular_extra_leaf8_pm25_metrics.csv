@@ -1,0 +1,4 @@
+model,feature_mode,horizon,val_RMSE,test_RMSE,n_train,n_val,n_test,fit_s
+tabular_extra_leaf8,full,6,48.22486877441406,19.702404022216797,1950,354,540,2.22
+tabular_extra_leaf8,full,24,42.386356353759766,22.332889556884766,1950,354,540,2.24
+tabular_extra_leaf8,full,72,44.256591796875,26.699298858642578,1950,354,540,2.26

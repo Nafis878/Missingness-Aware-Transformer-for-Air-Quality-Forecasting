@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Delhi,purity_knn,proximity,mcar,20.415,13.994,0.5088,0.3111,0.2883,-0.4158,0.4,45465
+Delhi,purity_knn,proximity,outage,77.609,74.087,0.7531,0.6328,-0.5481,-0.0697,0.0,46724

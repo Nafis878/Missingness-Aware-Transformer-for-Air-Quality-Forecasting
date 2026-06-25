@@ -1,0 +1,13 @@
+pollutant,model,h24_rmse_mean,h24_rmse_std,n_seeds
+PM2.5,Full MAT,76.0,0.62,3
+PM2.5,MAT+dropout,79.69,2.17,3
+PM2.5,Two-stage SAITS,76.31,0.49,3
+PM10,Full MAT,107.72,1.93,3
+PM10,MAT+dropout,110.49,2.01,3
+PM10,Two-stage SAITS,109.47,1.19,3
+NO2,Full MAT,15.35,0.24,3
+NO2,MAT+dropout,15.01,0.37,3
+NO2,Two-stage SAITS,15.66,0.27,3
+O3,Full MAT,16.1,0.75,3
+O3,MAT+dropout,15.07,0.63,3
+O3,Two-stage SAITS,14.8,0.69,3

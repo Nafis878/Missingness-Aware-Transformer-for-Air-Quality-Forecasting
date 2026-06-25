@@ -1,0 +1,4 @@
+model,feature_mode,horizon,val_RMSE,test_RMSE,n_train,n_val,n_test,fit_s
+tabular_extra_full500,full,6,48.256683349609375,19.73171043395996,1950,354,540,1.86
+tabular_extra_full500,full,24,43.02206802368164,22.517559051513672,1950,354,540,1.95
+tabular_extra_full500,full,72,44.82051086425781,27.479368209838867,1950,354,540,2.05

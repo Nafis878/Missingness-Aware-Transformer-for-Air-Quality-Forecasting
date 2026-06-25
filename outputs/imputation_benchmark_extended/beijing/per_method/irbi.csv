@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Beijing,irbi,ratio,mcar,38.375,23.196,1.2911,0.8416,-0.6289,-1.3637,0.3,265236
+Beijing,irbi,ratio,outage,53.701,33.563,0.8024,0.4726,0.364,0.1852,0.3,267217

@@ -1,0 +1,10 @@
+dataset,horizon,best_model,best_RMSE
+Dhaka,6,Two-stage (KNN),66.95
+Dhaka,24,Proposed (variant B),76.0
+Dhaka,72,GRU,79.58
+Delhi,6,Persistence,21.28
+Delhi,24,Persistence,25.55
+Delhi,72,DLinear,27.43
+Beijing,6,Proposed (variant B),49.38
+Beijing,24,GRU-D,75.87
+Beijing,72,GRU-D,84.77

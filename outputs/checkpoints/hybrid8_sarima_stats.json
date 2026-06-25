@@ -1,0 +1,9 @@
+{
+  "name": "hybrid8_sarima",
+  "seed": 42,
+  "n_parameters": 0,
+  "train_time_s": 184.0,
+  "latency_ms_per_window": 32.99378157045536,
+  "impute_time_s": 0.0,
+  "base_method": "sarima"
+}

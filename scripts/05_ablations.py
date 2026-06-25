@@ -12,9 +12,13 @@ Ablation variants (each trained with seeds from ``ablation.seeds``; the
 * ``full``           proposed model as configured (variant A)
 * ``no_miss_embed``  missingness embedding removed (missing = zero-fill only)
 * ``variant_B``      attention additionally masked to PM2.5-missing timesteps
+* ``no_station_embed`` station identity embedding removed
+* ``no_pos_enc``     sequence positional encoding removed
 * ``no_met``         pollutant inputs only (WS/WD/Temp/RH/BP/SR excluded)
 * ``no_time``        calendar time features removed
 * ``seq72``/``seq336``  input window 72 h / 336 h (vs 168 h)
+* ``heads4``/``heads16`` attention-head count 4 / 16 (vs 8)
+* ``layers2``/``layers4`` Transformer depth 2 / 4 (vs 3)
 * ``single_h24``     single-horizon training (loss weights [0,1,0]);
                      compared on h24 — a full per-horizon grid would triple
                      the training budget for a secondary question.
@@ -47,8 +51,24 @@ from src.utils import load_config, seed_everything, setup_logging
 logger = logging.getLogger("05_ablations")
 
 MET_VARS = ["WS", "WD", "Temp", "RH", "BP", "SR"]
-ALL_VARIANTS = ["full", "no_miss_embed", "variant_B", "no_met", "no_time",
-                "seq72", "seq336", "single_h24", "miss_dropout"]
+ALL_VARIANTS = [
+    "full",
+    "variant_B",
+    "no_attention_mask",
+    "no_miss_embed",
+    "no_station_embed",
+    "no_pos_enc",
+    "no_met",
+    "no_time",
+    "seq72",
+    "seq336",
+    "heads4",
+    "heads16",
+    "layers2",
+    "layers4",
+    "single_h24",
+    "miss_dropout",
+]
 
 
 def _test_input_missingness(stations, cfg: dict) -> float:
@@ -77,6 +97,12 @@ def variant_setup(variant: str, base_cfg: dict) -> tuple[dict, dict, int | None]
         kwargs["use_missingness_embedding"] = False
     elif variant == "variant_B":
         cfg["model"]["attention_variant"] = "B"
+    elif variant == "no_attention_mask":
+        cfg["model"]["attention_variant"] = "A"
+    elif variant == "no_station_embed":
+        kwargs["use_station_embedding"] = False
+    elif variant == "no_pos_enc":
+        kwargs["use_positional_encoding"] = False
     elif variant == "no_met":
         cfg["data"]["exclude_features"] = list(
             set(cfg["data"]["exclude_features"]) | set(MET_VARS)
@@ -91,6 +117,14 @@ def variant_setup(variant: str, base_cfg: dict) -> tuple[dict, dict, int | None]
         # batch to keep peak RAM bounded (the 168-step run with batch 64 was
         # killed by the OS at this length). Documented in the paper.
         cfg["train"]["batch_size"] = 32
+    elif variant == "heads4":
+        cfg["model"]["n_heads"] = 4
+    elif variant == "heads16":
+        cfg["model"]["n_heads"] = 16
+    elif variant == "layers2":
+        cfg["model"]["n_layers"] = 2
+    elif variant == "layers4":
+        cfg["model"]["n_layers"] = 4
     elif variant == "single_h24":
         cfg["train"]["horizon_loss_weights"] = [0.0, 1.0, 0.0]
     elif variant == "miss_dropout":
@@ -356,6 +390,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default=None)
     parser.add_argument("--variants", default=",".join(ALL_VARIANTS))
+    parser.add_argument("--seeds", default=None,
+                        help="comma-separated ablation seeds; defaults to "
+                             "ablation.seeds from the config")
+    parser.add_argument("--skip-robustness", action="store_true",
+                        help="do not run the robustness experiment after "
+                             "training ablations")
     parser.add_argument("--robustness", action="store_true",
                         help="run only the robustness experiment")
     parser.add_argument("--export-seed-predictions", action="store_true",
@@ -364,6 +404,10 @@ def main() -> None:
     args = parser.parse_args()
 
     base_cfg = load_config(args.config)
+    if args.seeds:
+        base_cfg["ablation"]["seeds"] = [
+            int(s) for s in args.seeds.split(",") if s.strip()
+        ]
     setup_logging("05_ablations", base_cfg["paths"]["logs_dir"])
     seed_everything(base_cfg["seed"], base_cfg.get("num_threads"))
 
@@ -378,7 +422,8 @@ def main() -> None:
     if unknown:
         raise SystemExit(f"unknown variants: {unknown}")
     run_ablations(base_cfg, variants)
-    run_robustness(base_cfg)
+    if not args.skip_robustness:
+        run_robustness(base_cfg)
 
 
 if __name__ == "__main__":

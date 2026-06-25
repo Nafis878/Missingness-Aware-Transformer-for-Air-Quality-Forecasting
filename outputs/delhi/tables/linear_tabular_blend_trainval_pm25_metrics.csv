@@ -1,0 +1,7 @@
+model,split,horizon,RMSE
+linear_tabular_blend_trainval,val,6,46.64582824707031
+linear_tabular_blend_trainval,test,6,20.100496292114258
+linear_tabular_blend_trainval,val,24,41.360382080078125
+linear_tabular_blend_trainval,test,24,22.844528198242188
+linear_tabular_blend_trainval,val,72,43.345088958740234
+linear_tabular_blend_trainval,test,72,26.027830123901367

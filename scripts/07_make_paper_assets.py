@@ -92,8 +92,11 @@ def table3_ablations(cfg: dict) -> None:
                     rows[variant][h] = "—"
         rows[variant]["seeds"] = len(seeds)
     tbl = pd.DataFrame(rows).T
-    order = [v for v in ("full", "no_miss_embed", "variant_B", "no_met", "no_time",
-                         "seq72", "seq336", "single_h24", "miss_dropout")
+    order = [v for v in (
+        "variant_B", "no_attention_mask", "full", "no_miss_embed",
+        "no_station_embed", "no_time", "no_pos_enc", "no_met",
+        "seq72", "seq336", "heads4", "heads16", "layers2", "layers4",
+        "single_h24", "miss_dropout")
              if v in tbl.index]
     tbl = tbl.loc[order]
     export_table(tbl, Path(cfg["paths"]["tables_dir"]), "table3_ablations",

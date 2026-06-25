@@ -1,0 +1,19 @@
+\begin{table}
+\caption{Requested hyperparameter ablations on Dhaka PM2.5. Window 168, heads 8, and layers 3 correspond to the configured MAT run.}
+\label{tab:requested_hparam_ablations}
+\begin{tabular}{llllrlll}
+\toprule
+Factor & Setting & Run & Status & Seeds & 6 h & 24 h & 72 h \\
+\midrule
+Window & 72 & Window 72 & complete & 3 & 68.10 $\pm$ 0.63 & 77.21 $\pm$ 1.35 & 80.59 $\pm$ 0.87 \\
+Window/Layers & 168 or 3 & No attention mask & complete & 3 & 67.03 $\pm$ 0.34 & 76.46 $\pm$ 0.62 & 81.54 $\pm$ 1.59 \\
+Window & 336 & Window 336 & complete & 1 & 68.62 & 77.99 & 80.98 \\
+Attention heads & 4 & Heads 4 & not\_run & 0 & NA & NA & NA \\
+Attention heads & 8 & Full MAT (+attention mask) & complete & 3 & 67.04 $\pm$ 0.35 & 76.00 $\pm$ 0.62 & 80.26 $\pm$ 1.67 \\
+Attention heads & 16 & Heads 16 & not\_run & 0 & NA & NA & NA \\
+Layers & 2 & Layers 2 & not\_run & 0 & NA & NA & NA \\
+Window/Layers & 168 or 3 & No attention mask & complete & 3 & 67.03 $\pm$ 0.34 & 76.46 $\pm$ 0.62 & 81.54 $\pm$ 1.59 \\
+Layers & 4 & Layers 4 & not\_run & 0 & NA & NA & NA \\
+\bottomrule
+\end{tabular}
+\end{table}

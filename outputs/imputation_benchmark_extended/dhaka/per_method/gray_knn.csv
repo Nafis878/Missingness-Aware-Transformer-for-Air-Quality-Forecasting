@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Dhaka,gray_knn,proximity,mcar,89.593,40.034,1.566,0.4904,0.2451,-0.5125,3.5,264413
+Dhaka,gray_knn,proximity,outage,108.49,60.268,1.6721,0.7193,0.1293,-0.1471,3.1,266833

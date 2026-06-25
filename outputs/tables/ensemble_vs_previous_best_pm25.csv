@@ -1,0 +1,10 @@
+dataset,horizon,ensemble_name,previous_best_model,previous_best_RMSE,ensemble_RMSE,delta_ensemble_minus_previous,ensemble_wins
+Dhaka,6,ensemble_weighted_hybrid8,Two-stage (KNN),66.95,66.17344665527344,-0.7765533447265653,True
+Dhaka,24,ensemble_weighted_hybrid8,Proposed (variant B),76.0,74.71553802490234,-1.2844619750976562,True
+Dhaka,72,ensemble_weighted_hybrid8,GRU,79.58,77.89633178710938,-1.6836682128906233,True
+Delhi,6,ensemble_weighted,Persistence,21.28,21.69027328491211,0.41027328491210824,False
+Delhi,24,ensemble_weighted,Persistence,25.55,24.50563621520996,-1.0443637847900398,True
+Delhi,72,ensemble_weighted,DLinear,27.43,27.71953010559082,0.2895301055908206,False
+Beijing,6,ensemble_weighted,Proposed (variant B),49.38,48.003116607666016,-1.376883392333987,True
+Beijing,24,ensemble_weighted,GRU-D,75.87,74.77424621582031,-1.095753784179692,True
+Beijing,72,ensemble_weighted,GRU-D,84.77,84.15206146240234,-0.6179385375976523,True

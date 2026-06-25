@@ -25,6 +25,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 
 from src.models.common import count_parameters
+from src.utils import peak_memory_mb
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,9 @@ def train_model(
         "name": name, "seed": seed, "checkpoint": str(ckpt_path),
         "best_val_loss": best_val, "best_epoch": best_epoch,
         "epochs_run": len(history), "train_time_s": round(train_time, 1),
-        "n_parameters": count_parameters(model), "history": history,
+        "n_parameters": count_parameters(model),
+        "peak_memory_mb": peak_memory_mb(),
+        "history": history,
     }
     logger.info("%s: done in %.1fs, best val=%.4f (epoch %d), %d params",
                 name, train_time, best_val, best_epoch, stats["n_parameters"])

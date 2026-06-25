@@ -1,0 +1,4 @@
+horizon,dlinear,tabular,dlinear_weight,tabular_weight,val_RMSE
+6,seeds/dlinear_s43,tabular_extra_leaf8_trainval,0.48,0.52,46.645829348500975
+24,seeds/dlinear_s42,tabular_extra_leaf20_trainval,0.26,0.74,41.36038357670932
+72,seeds/dlinear_s44,tabular_extra_leaf12_trainval,0.34,0.6599999999999999,43.34508985095292

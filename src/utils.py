@@ -146,9 +146,17 @@ def peak_memory_mb() -> float | None:
 
             pmc = PMC()
             pmc.cb = ctypes.sizeof(PMC)
-            handle = ctypes.windll.kernel32.GetCurrentProcess()
-            if ctypes.windll.psapi.GetProcessMemoryInfo(
-                handle, ctypes.byref(pmc), pmc.cb
+            # Set restype/argtypes so the 64-bit process HANDLE is not truncated
+            # to 32 bits (the default int marshalling makes the call fail).
+            kernel32 = ctypes.windll.kernel32
+            psapi = ctypes.windll.psapi
+            kernel32.GetCurrentProcess.restype = wt.HANDLE
+            psapi.GetProcessMemoryInfo.argtypes = [
+                wt.HANDLE, ctypes.POINTER(PMC), wt.DWORD
+            ]
+            psapi.GetProcessMemoryInfo.restype = wt.BOOL
+            if psapi.GetProcessMemoryInfo(
+                kernel32.GetCurrentProcess(), ctypes.byref(pmc), pmc.cb
             ):
                 return pmc.PeakWorkingSetSize / (1024 * 1024)
         else:  # pragma: no cover - unix path

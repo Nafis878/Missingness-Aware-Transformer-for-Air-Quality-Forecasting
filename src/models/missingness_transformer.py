@@ -17,7 +17,8 @@ contribution is the native missingness handling:
 Config switches (``model.*``): ``attention_variant`` A/B, ``pooling``
 last/attention, ``positional_encoding`` sinusoidal/learned,
 plus constructor flags ``use_missingness_embedding`` and
-``use_time_features`` for the ablations.
+``use_time_features`` for the ablations. Additional ablation flags can disable
+station and positional embeddings.
 """
 
 from __future__ import annotations
@@ -60,6 +61,8 @@ class MissingnessTransformer(nn.Module):
         used by attention variant B. Required when variant B is active.
     use_missingness_embedding / use_time_features:
         Ablation switches (default on).
+    use_station_embedding / use_positional_encoding:
+        Further ablation switches (default on).
     """
 
     def __init__(
@@ -72,6 +75,8 @@ class MissingnessTransformer(nn.Module):
         target_feature_idx: int | None = None,
         use_missingness_embedding: bool = True,
         use_time_features: bool = True,
+        use_station_embedding: bool = True,
+        use_positional_encoding: bool = True,
         n_time_feats: int = 6,
     ) -> None:
         super().__init__()
@@ -83,6 +88,8 @@ class MissingnessTransformer(nn.Module):
         self.target_feature_idx = target_feature_idx
         self.use_missingness_embedding = use_missingness_embedding
         self.use_time_features = use_time_features
+        self.use_station_embedding = use_station_embedding
+        self.use_positional_encoding = use_positional_encoding
 
         self.value_proj = nn.Linear(n_features, d_model)
         self.miss_proj = (
@@ -90,12 +97,14 @@ class MissingnessTransformer(nn.Module):
             if use_missingness_embedding else None
         )
         self.time_proj = nn.Linear(n_time_feats, d_model) if use_time_features else None
-        self.station_embed = nn.Embedding(n_stations, d_model)
+        self.station_embed = (
+            nn.Embedding(n_stations, d_model) if use_station_embedding else None
+        )
         self.pos_enc = (
             LearnedPositionalEncoding(d_model)
             if mcfg.get("positional_encoding") == "learned"
             else SinusoidalPositionalEncoding(d_model)
-        )
+        ) if use_positional_encoding else nn.Identity()
 
         layer = nn.TransformerEncoderLayer(
             d_model=d_model,
@@ -133,7 +142,8 @@ class MissingnessTransformer(nn.Module):
             x = x + self.miss_proj(1.0 - mask)
         if self.time_proj is not None:
             x = x + self.time_proj(batch["time_feats"])
-        x = x + self.station_embed(batch["station_id"]).unsqueeze(1)
+        if self.station_embed is not None:
+            x = x + self.station_embed(batch["station_id"]).unsqueeze(1)
         x = self.pos_enc(x)
 
         kpm = self._variant_b_mask(mask) if self.attention_variant == "B" else None

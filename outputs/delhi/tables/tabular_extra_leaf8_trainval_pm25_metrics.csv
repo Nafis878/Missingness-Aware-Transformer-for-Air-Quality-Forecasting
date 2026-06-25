@@ -1,0 +1,4 @@
+model,horizon,test_RMSE,n_fit,fit_s
+tabular_extra_leaf8_trainval,6,19.89634895324707,2304,2.8
+tabular_extra_leaf8_trainval,24,22.63434410095215,2304,2.91
+tabular_extra_leaf8_trainval,72,26.825420379638672,2304,3.25

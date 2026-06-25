@@ -1,0 +1,10 @@
+dataset,horizon,selected_candidate,validation_RMSE
+Dhaka,6,ensemble_seed_member,37.34067916870117
+Dhaka,24,ensemble_seed_member,56.968650817871094
+Dhaka,72,ensemble_seed_member,66.57551574707031
+Delhi,6,ensemble_seed_member,45.276851654052734
+Delhi,24,ensemble_seed_member,41.19619369506836
+Delhi,72,ensemble_seed_member,41.59672546386719
+Beijing,6,ensemble_seed_member,79.21083068847656
+Beijing,24,ensemble_seed_member,101.13973999023438
+Beijing,72,ensemble_seed_member,114.63803100585938

@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Beijing,cnn_gan,deep-GAN,mcar,54.192,40.656,0.9797,0.7005,0.062,-0.7937,0.0,265236
+Beijing,cnn_gan,deep-GAN,outage,81.84,61.591,1.0731,0.8233,-0.1376,-0.0897,0.0,267217

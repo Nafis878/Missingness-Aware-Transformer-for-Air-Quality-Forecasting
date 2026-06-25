@@ -1,0 +1,68 @@
+{
+  "name": "hybrid8_gru",
+  "seed": 42,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\\air-transformer\\outputs\\checkpoints\\hybrid8_gru_seed42.pt",
+  "best_val_loss": 0.6870546103337234,
+  "best_epoch": 3,
+  "epochs_run": 11,
+  "train_time_s": 307.6,
+  "n_parameters": 205202,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.5169118957679173,
+      "val": 0.7570596167917856
+    },
+    {
+      "epoch": 1,
+      "train": 0.39950989372708795,
+      "val": 0.7140650125520647
+    },
+    {
+      "epoch": 2,
+      "train": 0.3803491955038661,
+      "val": 0.709042484398889
+    },
+    {
+      "epoch": 3,
+      "train": 0.3686311490757224,
+      "val": 0.6870546103337234
+    },
+    {
+      "epoch": 4,
+      "train": 0.359016809512034,
+      "val": 0.7086170405927702
+    },
+    {
+      "epoch": 5,
+      "train": 0.3525026968005813,
+      "val": 0.7420023405327357
+    },
+    {
+      "epoch": 6,
+      "train": 0.3435742358359627,
+      "val": 0.7147287379622335
+    },
+    {
+      "epoch": 7,
+      "train": 0.33663872733295114,
+      "val": 0.7133093014346381
+    },
+    {
+      "epoch": 8,
+      "train": 0.33079063278272636,
+      "val": 0.7438138470092953
+    },
+    {
+      "epoch": 9,
+      "train": 0.3225496335754677,
+      "val": 0.737991433460739
+    },
+    {
+      "epoch": 10,
+      "train": 0.3175241462057087,
+      "val": 0.7243886109200313
+    }
+  ],
+  "latency_ms_per_window": 0.8697860344207293
+}

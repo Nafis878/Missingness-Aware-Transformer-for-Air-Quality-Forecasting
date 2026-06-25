@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Delhi,cnn_gan,deep-GAN,mcar,44.438,36.996,0.5214,0.3974,0.2527,-0.4507,0.0,45465
+Delhi,cnn_gan,deep-GAN,outage,79.451,73.683,0.794,0.6718,-0.7212,-0.1279,0.0,46724

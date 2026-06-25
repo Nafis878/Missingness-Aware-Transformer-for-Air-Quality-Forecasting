@@ -1,0 +1,92 @@
+{
+  "name": "hybrid8_masked_variant_B",
+  "seed": 43,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\\air-transformer\\outputs\\checkpoints\\hybrid8_masked_variant_B_seed43.pt",
+  "best_val_loss": 0.6196164991875392,
+  "best_epoch": 7,
+  "epochs_run": 15,
+  "train_time_s": 2183.3,
+  "n_parameters": 406418,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.546547762884315,
+      "val": 0.6415918107951674
+    },
+    {
+      "epoch": 1,
+      "train": 0.41349506194377394,
+      "val": 0.6425628306704119
+    },
+    {
+      "epoch": 2,
+      "train": 0.3895338738246054,
+      "val": 0.6327813802849285
+    },
+    {
+      "epoch": 3,
+      "train": 0.3761235581356521,
+      "val": 0.6275177049940609
+    },
+    {
+      "epoch": 4,
+      "train": 0.3638092919251672,
+      "val": 0.6355378591078622
+    },
+    {
+      "epoch": 5,
+      "train": 0.34949385416057216,
+      "val": 0.6198519767046767
+    },
+    {
+      "epoch": 6,
+      "train": 0.33926072698077725,
+      "val": 0.6520090801005597
+    },
+    {
+      "epoch": 7,
+      "train": 0.33059775011204784,
+      "val": 0.6196164991875392
+    },
+    {
+      "epoch": 8,
+      "train": 0.31851949524603085,
+      "val": 0.6887434000914825
+    },
+    {
+      "epoch": 9,
+      "train": 0.3061230845497304,
+      "val": 0.654758392762438
+    },
+    {
+      "epoch": 10,
+      "train": 0.2948868445578119,
+      "val": 0.647570064668306
+    },
+    {
+      "epoch": 11,
+      "train": 0.2839651788583396,
+      "val": 0.683704964844803
+    },
+    {
+      "epoch": 12,
+      "train": 0.27346911049776124,
+      "val": 0.6442660100144729
+    },
+    {
+      "epoch": 13,
+      "train": 0.26058346630462814,
+      "val": 0.6555031198578393
+    },
+    {
+      "epoch": 14,
+      "train": 0.25146606278996947,
+      "val": 0.7209229587168983
+    }
+  ],
+  "impute_time_s": 0.0,
+  "base_model": "variant_B",
+  "imputer": "hybrid_top8",
+  "preserve_original_mask": true,
+  "latency_ms_per_window": 1.8796031014700316
+}

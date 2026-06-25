@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Dhaka,subspace_cluster,clustering,mcar,94.636,46.071,1.0608,0.4713,0.6537,-0.0245,0.4,264413
+Dhaka,subspace_cluster,clustering,outage,105.584,51.941,1.2462,0.5375,0.5163,0.1451,0.3,266833

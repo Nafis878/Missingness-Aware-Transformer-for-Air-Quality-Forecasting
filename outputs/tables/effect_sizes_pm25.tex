@@ -1,0 +1,19 @@
+\begin{table}
+\caption{Effect sizes for Dhaka PM2.5 RMSE. Positive relative improvement, positive paired Cohen's $d$, and positive Cliff's $\Delta$ favor the MAT-side candidate.}
+\label{tab:effect_sizes}
+\begin{tabular}{lrlllllr}
+\toprule
+Comparison & Horizon & MAT RMSE & Baseline RMSE & Rel. improv. (\%) & Paired Cohen's $d$ & Cliff's $\Delta$ & Seeds \\
+\midrule
+Full MAT vs SAITS & 6 & 67.04 & 67.22 & 0.28 & 0.199 & 0.333 & 3 \\
+Full MAT vs SAITS & 24 & 76.00 & 76.31 & 0.40 & 0.845 & 0.111 & 3 \\
+Full MAT vs SAITS & 72 & 80.26 & 81.43 & 1.44 & 3.123 & 0.556 & 3 \\
+Full MAT vs KNN & 6 & 67.04 & 66.95 & -0.13 & -0.207 & 0.111 & 3 \\
+Full MAT vs KNN & 24 & 76.00 & 76.42 & 0.55 & 0.273 & 0.333 & 3 \\
+Full MAT vs KNN & 72 & 80.26 & 80.95 & 0.85 & 2.283 & 0.333 & 3 \\
+MAT+dropout vs SAITS & 6 & 67.48 & 67.22 & -0.37 & -1.628 & -0.556 & 3 \\
+MAT+dropout vs SAITS & 24 & 79.69 & 76.31 & -4.43 & -1.465 & -1.000 & 3 \\
+MAT+dropout vs SAITS & 72 & 81.54 & 81.43 & -0.13 & -0.139 & 0.111 & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}

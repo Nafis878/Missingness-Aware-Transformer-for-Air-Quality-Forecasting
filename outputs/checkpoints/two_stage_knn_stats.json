@@ -65,5 +65,6 @@
     }
   ],
   "impute_time_s": 137.9,
-  "latency_ms_per_window": 1.4998783972750624
+  "latency_ms_per_window": 1.4998783972750624,
+  "peak_memory_mb": 610.4
 }

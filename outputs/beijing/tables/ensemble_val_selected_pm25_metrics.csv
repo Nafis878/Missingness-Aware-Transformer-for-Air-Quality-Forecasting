@@ -1,0 +1,7 @@
+split,candidate,horizon,RMSE,MAE,n,dataset
+val,ensemble_val_selected,6,79.21083068847656,42.637359619140625,1062,Beijing
+val,ensemble_val_selected,24,101.13973999023438,74.95263671875,1063,Beijing
+val,ensemble_val_selected,72,114.63803100585938,89.88948059082031,1063,Beijing
+test,ensemble_val_selected,6,48.37778091430664,28.633304595947266,4282,Beijing
+test,ensemble_val_selected,24,74.62677001953125,50.70450210571289,4295,Beijing
+test,ensemble_val_selected,72,84.00534057617188,61.310672760009766,4294,Beijing

@@ -1,0 +1,19 @@
+dataset,horizon,after_method,after_RMSE,before_RMSE,delta_vs_previous_best,improvement_pct,beats_previous_best,after_method_label,cell,cell_multiline,absolute_reduction
+Dhaka,6,tabular_extra_lean200_trainval,64.99736785888672,66.95,-1.952632141113284,2.916552862006399,True,Tabular refit,Dhaka 6h,"Dhaka
+6h",1.952632141113284
+Dhaka,24,tabular_extra_lean200_trainval,74.02993774414062,76.0,-1.970062255859375,2.592187178762336,True,Tabular refit,Dhaka 24h,"Dhaka
+24h",1.970062255859375
+Dhaka,72,ensemble_seed_member,77.74080657958984,79.58,-1.8391934204101543,2.311125182721984,True,Seed-member ensemble,Dhaka 72h,"Dhaka
+72h",1.8391934204101545
+Delhi,6,tabular_extra_leaf8_trainval,19.89634704589844,21.28,-1.3836529541015636,6.502128543710355,True,Tabular refit,Delhi 6h,"Delhi
+6h",1.38365295410156
+Delhi,24,tabular_extra_leaf12_trainval,22.57571029663086,25.55,-2.9742897033691413,11.641055590485877,True,Tabular refit,Delhi 24h,"Delhi
+24h",2.9742897033691413
+Delhi,72,linear_tabular_blend,25.9393367767334,27.43,-1.4906632232666013,5.434426625106093,True,Linear-tabular blend,Delhi 72h,"Delhi
+72h",1.4906632232666013
+Beijing,6,ensemble_weighted,48.003116607666016,49.38,-1.376883392333987,2.78834222829888,True,Weighted ensemble,Beijing 6h,"Beijing
+6h",1.376883392333987
+Beijing,24,ensemble_val_selected_pm25_metrics,74.62677001953125,75.87,-1.2432299804687543,1.6386318445614267,True,Validation-selected ensemble,Beijing 24h,"Beijing
+24h",1.2432299804687545
+Beijing,72,ensemble_seed_member,84.00534057617188,84.77,-0.764659423828121,0.9020401366381042,True,Seed-member ensemble,Beijing 72h,"Beijing
+72h",0.764659423828121

@@ -1,0 +1,9 @@
+{
+  "name":"tabular_extra_lean200",
+  "feature_mode":"lean",
+  "n_estimators":200,
+  "min_samples_leaf":5,
+  "max_features":0.6,
+  "train_time_s":8.4,
+  "n_parameters":0
+}

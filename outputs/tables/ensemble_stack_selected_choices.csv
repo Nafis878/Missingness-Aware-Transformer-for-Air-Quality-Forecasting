@@ -1,0 +1,10 @@
+dataset,horizon,selected,val_RMSE
+Dhaka,6,ensemble_seed_member,37.34067916870117
+Dhaka,24,ensemble_ridge_seed_member,56.72788619995117
+Dhaka,72,ensemble_ridge_seed_member,66.31546783447266
+Delhi,6,ensemble_seed_member,45.276851654052734
+Delhi,24,ensemble_ridge_seed_member,38.295005798339844
+Delhi,72,ensemble_ridge_seed_member,41.28413009643555
+Beijing,6,ensemble_ridge_seed_member,76.37222290039062
+Beijing,24,ensemble_ridge_seed_member,99.45166778564453
+Beijing,72,ensemble_ridge_seed_member,105.44371795654297

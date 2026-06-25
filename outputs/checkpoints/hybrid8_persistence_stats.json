@@ -1,0 +1,9 @@
+{
+  "name": "hybrid8_persistence",
+  "seed": 42,
+  "n_parameters": 0,
+  "train_time_s": 0.0,
+  "latency_ms_per_window": 0.028428038723549532,
+  "impute_time_s": 0.1,
+  "base_method": "persistence"
+}

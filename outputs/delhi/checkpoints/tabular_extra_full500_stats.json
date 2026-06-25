@@ -1,0 +1,9 @@
+{
+  "name":"tabular_extra_full500",
+  "feature_mode":"full",
+  "n_estimators":500,
+  "min_samples_leaf":5,
+  "max_features":0.5,
+  "train_time_s":5.9,
+  "n_parameters":0
+}

@@ -64,5 +64,6 @@
       "val": 0.7051760702838359
     }
   ],
-  "latency_ms_per_window": 0.5312362136966994
+  "latency_ms_per_window": 0.5312362136966994,
+  "peak_memory_mb": 528.0
 }

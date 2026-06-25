@@ -1,0 +1,7 @@
+split,model,pollutant,horizon,RMSE,MAE,n
+val,ensemble_ridge_seed_member,PM2.5,6,37.461185455322266,25.502235412597656,1186
+val,ensemble_ridge_seed_member,PM2.5,24,56.72788619995117,40.08465576171875,1207
+val,ensemble_ridge_seed_member,PM2.5,72,66.31546783447266,49.21455001831055,1209
+test,ensemble_ridge_seed_member,PM2.5,6,66.00321960449219,31.913875579833984,4459
+test,ensemble_ridge_seed_member,PM2.5,24,74.98985290527344,41.23993682861328,4569
+test,ensemble_ridge_seed_member,PM2.5,72,78.19660949707031,46.70332336425781,4566

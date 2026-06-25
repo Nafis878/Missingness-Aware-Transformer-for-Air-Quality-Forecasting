@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Delhi,irbi,ratio,mcar,23.98,14.126,0.9094,0.5427,-1.2732,-1.5303,0.1,45465
+Delhi,irbi,ratio,outage,19.454,13.547,0.6071,0.3606,-0.006,0.1377,0.1,46724

@@ -1,0 +1,54 @@
+{
+  "name": "two_stage_hybrid8",
+  "seed": 42,
+  "checkpoint": "C:\\Users\\UseR\\Downloads\\Missingness-Aware-Transformer-for-Air-Quality-Forecasting\\air-transformer\\outputs\\beijing\\checkpoints\\two_stage_hybrid8_seed42.pt",
+  "best_val_loss": 1.2899620542221282,
+  "best_epoch": 0,
+  "epochs_run": 8,
+  "train_time_s": 11.4,
+  "n_parameters": 9306,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.7235662492607305,
+      "val": 1.2899620542221282
+    },
+    {
+      "epoch": 1,
+      "train": 0.6524094573480194,
+      "val": 1.2903273618204956
+    },
+    {
+      "epoch": 2,
+      "train": 0.6431360989833742,
+      "val": 1.310739522983347
+    },
+    {
+      "epoch": 3,
+      "train": 0.641190943746964,
+      "val": 1.2972230071476871
+    },
+    {
+      "epoch": 4,
+      "train": 0.6370747726888574,
+      "val": 1.3112246319204144
+    },
+    {
+      "epoch": 5,
+      "train": 0.6354987856733658,
+      "val": 1.2959493462566631
+    },
+    {
+      "epoch": 6,
+      "train": 0.6323422938370197,
+      "val": 1.305787366222323
+    },
+    {
+      "epoch": 7,
+      "train": 0.633147802306604,
+      "val": 1.3303960648575015
+    }
+  ],
+  "impute_time_s": 1432.1,
+  "latency_ms_per_window": 0.07927543618002468
+}

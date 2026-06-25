@@ -1,0 +1,7 @@
+variant,run_key,status,seeds,h6,h24,h72,train_time_min_mean
+Full MAT (+attention mask),variant_B,complete,3,67.04 $\pm$ 0.35,76.00 $\pm$ 0.62,80.26 $\pm$ 1.67,26.4
+No attention mask,full,complete,3,67.03 $\pm$ 0.34,76.46 $\pm$ 0.62,81.54 $\pm$ 1.59,29.9
+No mask embedding,no_miss_embed,complete,3,67.52 $\pm$ 0.22,76.35 $\pm$ 0.36,81.93 $\pm$ 2.31,26.0
+No station embedding,no_station_embed,not_run,0,NA,NA,NA,NA
+No time features,no_time,complete,3,67.88 $\pm$ 0.69,78.13 $\pm$ 1.18,84.69 $\pm$ 1.30,25.6
+No positional encoding,no_pos_enc,not_run,0,NA,NA,NA,NA

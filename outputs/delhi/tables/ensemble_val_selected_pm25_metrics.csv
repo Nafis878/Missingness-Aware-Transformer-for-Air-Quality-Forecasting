@@ -1,0 +1,7 @@
+split,candidate,horizon,RMSE,MAE,n,dataset
+val,ensemble_val_selected,6,45.276851654052734,32.8630485534668,354,Delhi
+val,ensemble_val_selected,24,41.19619369506836,30.274585723876953,354,Delhi
+val,ensemble_val_selected,72,41.59672546386719,31.101482391357422,354,Delhi
+test,ensemble_val_selected,6,21.246597290039062,15.32176685333252,540,Delhi
+test,ensemble_val_selected,24,24.65922737121582,19.964622497558594,540,Delhi
+test,ensemble_val_selected,72,29.438138961791992,23.299999237060547,540,Delhi

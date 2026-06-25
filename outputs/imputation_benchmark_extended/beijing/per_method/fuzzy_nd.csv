@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Beijing,fuzzy_nd,fuzzy,mcar,38.191,25.447,0.6672,0.4162,0.565,-0.2215,6.3,265236
+Beijing,fuzzy_nd,fuzzy,outage,80.344,59.734,1.0114,0.7568,-0.0106,-0.0271,1.5,267217

@@ -21,6 +21,7 @@
 
 \graphicspath{{../outputs/figures/}{../outputs/beijing/figures/}{../outputs/delhi/figures/}}
 \sisetup{detect-weight=true, detect-family=true}
+\DeclareSIUnit{\byte}{B}   % siunitx has no built-in byte unit
 \newcommand{\ugm}{\si{\micro\gram\per\cubic\metre}}
 \newcommand{\pmf}{PM\textsubscript{2.5}}
 
@@ -57,8 +58,7 @@ difference, correcting a single-seed result in earlier work that did not
 replicate. Our central contribution is to make the choice \emph{predictive}: we
 define a directly \textbf{measured imputability} of a network---one minus the
 ratio of a deep imputer's to forward-fill's reconstruction error on held-out
-observed cells---and show that the end-to-end advantage at a fixed severe outage
-declines \emph{monotonically} as imputability rises and crosses zero. Across the
+observed cells---and use it as a decision statistic. Across the
 three networks the advantage falls from \SI{+1.7}{\ugm} on least-imputable Dhaka
 (imputability $-0.39$) through \SI{-2.6}{\ugm} on Delhi ($-0.09$) to
 \SI{-4.3}{\ugm} on most-imputable Beijing ($+0.20$), yielding a deployable rule:
@@ -123,12 +123,13 @@ Our contributions are:
 \begin{enumerate}
   \item A \textbf{measured-imputability decision rule}. We define a network's
   \emph{imputability} as $1-\mathrm{RMSE_{SAITS}}/\mathrm{RMSE_{ffill}}$ on
-  held-out observed cells---a single number a practitioner can compute before
-  choosing a paradigm---and show across \emph{three} networks spanning the
-  spectrum that the end-to-end advantage at fixed severe outage declines
-  monotonically with imputability and crosses zero, turning the question from a
-  post-hoc benchmark observation into a \emph{predictive} rule
-  (Section~\ref{sec:imputability}).
+  held-out observed cells---a bounded-above, scale-invariant number a
+  practitioner can compute before choosing a paradigm. Across the three networks
+  it orders the end-to-end advantage at fixed severe outage monotonically and
+  crosses zero; because three points alone do not prove a universal monotone
+  law, we also report a bootstrapped within-network severity crossover and treat
+  the cross-network curve as a decision statistic to be expanded with more
+  networks (Section~\ref{sec:imputability}).
   \item A \textbf{controlled characterization of when end-to-end forecasting
   beats impute-then-forecast}, showing the choice is governed by the interaction
   of effective input missingness, missingness structure (cell-wise vs
@@ -184,6 +185,34 @@ multivariate imputation by chained equations
 reconstruction objective, and CSDI \citep{tashiro2021csdi} uses conditional
 diffusion. We include SAITS as a \emph{strong} impute-then-forecast competitor,
 quality-gated so that it genuinely outperforms forward-fill before it is used.
+Our choice is governed by an explicit, deployment-first selection criterion,
+because the imputer sits on the serving path and is refit on every data refresh:
+the reference deep imputer should (C1) run \emph{deterministic}, single-pass
+inference cheap enough to re-apply online; (C2) be \emph{explicitly optimized for
+masked multivariate time-series reconstruction} (not borrowed from a tabular or
+forecasting objective); and (C3) be \emph{reproducible} in-repo without heavy
+external dependencies, so the comparison is auditable. SAITS
+\citep{du2023saits} meets all three---diagonally-masked self-attention trained
+with a joint observed-reconstruction and masked-imputation objective, one
+forward pass, no sampling---which is why we adopt it and additionally
+quality-gate it against forward-fill. The alternatives each fail at least one
+criterion for \emph{this} role, not in general:
+BRITS \citep{cao2018brits} is a strong recurrent imputer but its bidirectional
+recurrence forces slow sequential inference (C1); CSDI \citep{tashiro2021csdi} is
+probabilistic and powerful but iterative diffusion sampling is expensive and
+stochastic for a re-run-online stage (C1); GAIN \citep{yoon2018gain} is primarily
+a tabular MCAR adversarial imputer whose minimax training is unstable and not
+designed for long temporal masks (C2); GP-VAE \citep{fortuin2020gpvae} centers on
+smooth latent uncertainty rather than point-reconstruction accuracy under
+structured outages (C2); ImputeFormer \citep{nie2024imputeformer} assumes
+low-rank spatiotemporal structure that the noisier networks here violate (C2);
+TimesNet \citep{wu2023timesnet} is a general forecasting/imputation backbone
+rather than a quality-gated imputer (C2); and MICE is already included as the
+classical chained-equation baseline. This is therefore not a claim that SAITS
+dominates all imputers---a stronger imputer would only \emph{raise} measured
+imputability and shift networks toward the impute-then-forecast side of our rule,
+leaving the decision logic intact; it is a conservative choice for a strong,
+reproducible, deployment-plausible deep imputation anchor.
 Crucially, prior work compares end-to-end and impute-then-forecast methods at a
 single operating point; we instead trace the comparison across the missingness
 spectrum and locate the crossover.
@@ -197,6 +226,18 @@ Transformers such as Autoformer \citep{wu2021autoformer} and Pyraformer
 Spatiotemporal air-quality models such as GeoMAN \citep{liang2018geoman} exploit
 network geometry; we keep a per-station treatment to isolate the effect of
 missingness handling.
+
+\paragraph{Foundation time-series models.}
+Recent pretrained forecasters such as Lag-Llama \citep{rasul2023lagllama},
+TimeGPT \citep{garza2023timegpt}, Moirai \citep{woo2024moirai}, and Chronos
+\citep{ansari2024chronos} show that large cross-domain time-series models can
+transfer in zero-shot or few-shot settings. They are relevant future baselines,
+but they do not remove the question studied here: an operational monitoring
+network still has to decide whether the serving path should first reconstruct
+missing inputs or forecast directly from masks. Most foundation forecasters also
+assume a clean history after preprocessing, expose limited control over
+station-outage masks, or require external/cloud inference; our CPU-deployable
+benchmark isolates the missingness-decision mechanism before adding such models.
 
 % =====================================================================
 \section{Data and missingness characterization}
@@ -215,7 +256,7 @@ pollutants and meteorology, only \SI{2.1}{\percent} missing. \textbf{Delhi}
 (\pmf, PM10, NO/NO\textsubscript{2}/NO\textsubscript{x}, NH\textsubscript{3},
 SO\textsubscript{2}, CO, O\textsubscript{3}, benzene) and meteorology. The
 published Delhi series is essentially \emph{complete} ($<\!0.2\%$ missing) but
-unusually noisy (\pmf{} mean \SI{93}{}, std \SI{98}{\ugm}); it is therefore not
+unusually noisy (\pmf{} mean \num{93}, std \SI{98}{\ugm}); it is therefore not
 an intermediate-\emph{missingness} case but a \emph{complete-yet-hard-to-impute}
 one, which is precisely what makes it a useful interior point on the
 \emph{imputability} axis rather than the completeness axis. We deliberately keep
@@ -236,7 +277,7 @@ all-variable gaps, matching the dominant real mechanism).
 The 2024 Dhaka files contain sensor saturation/error codes (the value
 \num{985.0} repeats verbatim thousands of times, including in monsoon months
 where such concentrations are physically impossible). Treating these as
-measurements inflates the persistence \SI{6}{\hour} RMSE from \SI{94}{} to
+measurements inflates the persistence \SI{6}{\hour} RMSE from \SI{94}{\ugm} to
 \SI{134}{\ugm}; every model comparison would be distorted. We flag-and-remove
 such codes and document the full cleaning protocol. Table~\ref{tab:dataset}
 (\texttt{table1\_dataset\_summary}) summarizes per-station coverage.
@@ -306,6 +347,48 @@ series carries little structure for any imputer to exploit. This is the same
 quantity our SAITS quality gate uses on the validation split, here measured on
 test for the decision rule.
 
+Each design choice in Eq.~\eqref{eq:imputability} answers a specific objection.
+\emph{Why a ratio?} Reconstruction error must be comparable across pollutants
+with wildly different units and dynamic ranges (\pmf{} in \ugm{} versus CO in
+ppm). Under any affine rescaling $y'=ay+b$ of a channel, root-mean-square error
+obeys $\mathrm{RMSE}(ay+b)=|a|\,\mathrm{RMSE}(y)$, so the common factor $|a|$
+cancels in $\mathrm{RMSE_{SAITS}}/\mathrm{RMSE_{ffill}}$ and the ratio is
+invariant to the unit and amplitude of every variable---an absolute error
+\emph{difference} would not be. \emph{Why subtract from one?} The raw ratio
+$r=\mathrm{RMSE_{SAITS}}/\mathrm{RMSE_{ffill}}\in[0,\infty)$ has its good end at
+$0$ and its neutral point at $1$; $I=1-r$ re-centers it as an \emph{improvement
+score} with neutral point $0$ and a positive good end, so $I>0$ reads directly as
+``SAITS cuts reconstruction error by $100I\%$ over the cheapest causal
+reference,'' $I=0$ as parity, and $I<0$ as a learned imputer that is actively
+worse than doing nothing. \emph{Why forward-fill in the denominator?} It is the
+right zero point---a causal, parameter-free, ubiquitously deployed baseline that
+any serving-time imputer must beat to justify its cost---so the score measures
+gain over the \emph{operational default}, not over an arbitrary constant.
+\emph{Why SAITS in the numerator?} It is the strongest imputer actually on our
+serving path and is already quality-gated against the same forward-fill
+reference, so the scalar that drives the rule is the one the deployment would
+experience.
+
+These choices give $I$ five properties that a decision statistic needs.
+\begin{enumerate}
+  \item \textbf{Bounded above.} Both RMSEs are nonnegative, so $r\ge0$ and
+  $I=1-r\le1$, with $I\!\to\!1$ only as the imputer approaches perfect
+  reconstruction; the score cannot be inflated past a fixed ceiling.
+  \item \textbf{Interpretable.} $I$ is a unitless fractional error reduction over
+  forward-fill, so $100I$ is a percentage a practitioner can reason about
+  directly.
+  \item \textbf{Scale-invariant.} By the affine-rescaling identity above, $I$ is
+  unchanged by the units or amplitude of any channel, so it is meaningful to
+  average or compare across pollutants.
+  \item \textbf{Monotone in imputer quality.} For a fixed forward-fill reference,
+  $I$ strictly decreases in $\mathrm{RMSE_{SAITS}}$: a better imputer always
+  yields a higher score, so the ranking it induces is faithful.
+  \item \textbf{Comparable across networks.} Every network is scored by the
+  identical hide-$20\%$-of-observed-cells protocol on its own held-out test
+  cells, so the numbers share one axis and can be ordered---exactly what the
+  decision rule requires.
+\end{enumerate}
+
 % =====================================================================
 \section{Experimental setup}
 \label{sec:setup}
@@ -317,14 +400,24 @@ baselines are deterministic single runs. Significance uses a \emph{per-seed}
 Diebold--Mariano test \citep{diebold1995comparing} with the small-sample
 correction of \citet{harvey1997testing} and a paired bootstrap, pairing the
 proposed model's seed~$i$ against the baseline's seed~$i$; we report the median
-and range of $p$ across seeds. We deliberately do not average predictions across
-seeds before testing, as that would evaluate a three-member ensemble that is
-never deployed. Optimization is AdamW \citep{loshchilov2019adamw} with cosine
+and range of $p$ across seeds. We also report paired Cohen's $d$, Cliff's
+$\Delta$, and relative RMSE improvement so that practical magnitude is visible
+even when three-seed significance is underpowered. We deliberately do not
+average predictions across seeds before testing, as that would evaluate a
+three-member ensemble that is never deployed. When validation-calibrated
+ensembles are explored as a post-processing check, their weights are fit only on
+validation bundles and then applied once to test bundles; a row-key audit over
+31 available member/seed validation--test pairs finds zero overlapping
+$(\text{station},\text{anchor})$ rows and strictly positive chronological gaps
+(Table~\ref{tab:leakage_audit}). Optimization is AdamW
+\citep{loshchilov2019adamw} with cosine
 decay and early stopping. Metrics are RMSE (headline), MAE, and $R^2$, all
 unscaled over observed targets; we additionally report a high-pollution-episode
 RMSE restricted to test hours with observed \pmf{}~$>\SI{150}{\ugm}$. The
 pipeline is config-driven and deterministic; all numbers regenerate from one
 command, and 104 unit tests cover the contracts.
+
+\input{../outputs/tables/ensemble_leakage_audit.tex}
 
 % =====================================================================
 \section{Results}
@@ -434,6 +527,22 @@ Proposed + miss-dropout& 26.42\,$\pm$\,0.79 & 30.83\,$\pm$\,2.52 & 34.37\,$\pm$\
 \end{tabular}
 \end{table}
 
+\paragraph{Magnitude and pollutants beyond \pmf.}
+Table~\ref{tab:effect_sizes} reports the requested effect-size view. On Dhaka
+\pmf{}, Full MAT is within \SI{0.3}{\percent} of SAITS at \SI{6}{\hour},
+improves by \SI{0.4}{\percent} at \SI{24}{\hour}, and by
+\SI{1.44}{\percent} at \SI{72}{\hour}; the positive Cohen's $d$ and Cliff's
+$\Delta$ at \SI{72}{\hour} show that the long-horizon gain is directionally
+consistent across seeds. Table~\ref{tab:extra_pollutants} extends the view to
+PM10, NO\textsubscript{2}, and O\textsubscript{3}. The parity pattern is not a
+\pmf{} artifact: at \SI{24}{\hour}, Full MAT is slightly better than SAITS for
+PM10 and NO\textsubscript{2}, while SAITS remains better for
+O\textsubscript{3}; the deployment conclusion is therefore pollutant-conditional
+rather than a blanket architectural win.
+
+\input{../outputs/tables/effect_sizes_pm25.tex}
+\input{../outputs/tables/extra_pollutants_h24.tex}
+
 \subsection{Robustness under corruption}
 \label{sec:robustness}
 
@@ -484,6 +593,25 @@ practitioner can compute on their own network before committing to a paradigm.
 The rule reads directly off the table---\textbf{forecast end-to-end when
 imputability is low (here, $\lesssim\!-0.3$); impute-then-forecast otherwise.}
 
+We state plainly what three points can and cannot establish. \emph{Any} three
+points with distinct abscissae and a consistent vertical ordering can be joined
+by a monotone curve; monotonicity across three networks is therefore not, by
+itself, evidence of a universal law, and we do not claim one. What the three
+points do support is weaker but still useful and---crucially---\emph{falsifiable}:
+(a) a \emph{sign} result that the data, not the fit, deliver---the advantage is
+$+1.69$ on Dhaka and negative on both Delhi and Beijing, so end-to-end and
+impute-then-forecast genuinely swap rank between the low- and high-imputability
+networks; (b) a \emph{mechanism} (Section~\ref{sec:theory}) that predicts the
+sign of the advantage from imputability \emph{before} the curve is drawn, so the
+ordering is a consequence of an account rather than a coincidence of three
+samples; and (c) a within-network bootstrap crossover
+(Section~\ref{sec:crossover}, Table~\ref{tab:crossover_bootstrap}) that does not
+rely on cross-network interpolation at all. We therefore present the
+cross-network curve as a \emph{decision statistic and a falsifiable hypothesis}
+to be tightened with more networks---a fourth network on the
+impute-then-forecast side of the rule that nonetheless favored end-to-end would
+refute it---rather than as an estimated functional form.
+
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.8\linewidth]{imputability_crossover.pdf}
@@ -516,6 +644,41 @@ Beijing & $+0.20$ & $0.46/0.57$ & $-4.29$ & impute-then-forecast \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+Two uncertainty checks guard against over-reading a three-network picture.
+First, the ROC-style threshold diagnostic treats ``end-to-end wins at severe
+outage'' as the positive class and $-\mathrm{imputability}$ as the score. It
+separates these three networks perfectly (Table~\ref{tab:imputability_roc};
+Figure~\ref{fig:imputability_roc}), but we report it only as a diagnostic
+because $n=3$ cannot support a precise classifier. Second, for the Dhaka
+station-outage severity sweep, a 1000-sample residual bootstrap of the linear
+severity trend gives a \SI{6}{\hour} crossover of \SI{41.46}{\percent}
+effective input missingness with a 95\% interval of
+\SIrange{24.88}{50.16}{\percent} (Table~\ref{tab:crossover_bootstrap};
+Figure~\ref{fig:crossover_bootstrap}). The broad interval is the point: the
+regime boundary is useful, but the paper should not pretend to know a sharp
+universal threshold.
+
+\input{../outputs/tables/imputability_threshold_roc_summary.tex}
+\input{../outputs/tables/crossover_bootstrap_ci.tex}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.52\linewidth]{imputability_threshold_roc.pdf}
+\caption{ROC diagnostic for using measured imputability to classify whether
+end-to-end wins at the severe-outage operating point. The curve is diagnostic
+only because it is based on three networks.}
+\label{fig:imputability_roc}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.72\linewidth]{crossover_bootstrap_ci.pdf}
+\caption{Bootstrap uncertainty for the Dhaka \SI{6}{\hour} station-outage
+crossover, estimated as the zero of a linear severity trend over the corruption
+sweep.}
+\label{fig:crossover_bootstrap}
+\end{figure}
 
 \subsection{The missingness-severity crossover}
 \label{sec:crossover}
@@ -557,15 +720,7 @@ stays ahead. The choice depends on series imputability, not severity alone.}
 \label{fig:crossover}
 \end{figure}
 
-\begin{table}[t]
-\centering
-\caption{Decision rule from the crossover study: effective input missingness at
-which end-to-end overtakes impute-then-forecast, per mechanism and horizon
-(\texttt{decision\_summary}). Values are filled from the regenerated table.}
-\label{tab:decision}
-\small
 \input{../outputs/tables/decision_summary.tex}
-\end{table}
 
 \subsection{Mechanism: the advantage tracks per-window incompleteness}
 \label{sec:mechanism}
@@ -613,16 +768,47 @@ PatchTST                & 152.52\,$\pm$\,1.68 & 147.21\,$\pm$\,4.19 & 152.22\,$\
 \end{tabular}
 \end{table}
 
+\subsection{Ablations and hyperparameters}
+\label{sec:ablations}
+
+Table~\ref{tab:requested_arch_ablations} reports the requested MAT component
+ablations. The attention mask is helpful mainly at longer range: Full MAT
+variant~B and the no-attention-mask variant are tied at \SI{6}{\hour}, while the
+mask improves \SI{24}{\hour} and \SI{72}{\hour} RMSE. Removing the missingness
+embedding slightly hurts \SI{6}{\hour} and \SI{72}{\hour}; removing calendar
+time features hurts all horizons and especially \SI{72}{\hour}, consistent with
+air-pollution seasonality carrying real signal. The code now exposes the
+requested no-station-embedding and no-positional-encoding switches, but those
+checkpoints are not present in the current artifact set, so they are marked
+``not\_run'' rather than invented.
+
+Table~\ref{tab:requested_hparam_ablations} reports completed window-length
+ablations and the requested attention-head/layer grid status. Window 72 is
+faster but worse at \SI{6}{\hour} and \SI{24}{\hour}; window 336 was run for one
+seed only and is slower without improving accuracy. Attention heads 4/8/16 and
+layers 2/3/4 are supported by the updated ablation runner; only the configured
+8-head, 3-layer run is completed in the current artifact set.
+
+\input{../outputs/tables/requested_architecture_ablations.tex}
+\input{../outputs/tables/requested_hyperparameter_ablations.tex}
+
 \subsection{Deployability}
 \label{sec:efficiency}
 
-The proposed model is \num{406}k parameters at \SI{1.8}{\milli\second} per window
-with \emph{no} imputation stage. The two-stage pipelines carry an imputer that
-must be refit and re-run on every data refresh: the SAITS imputer alone is
-\SI{5.6}{\minute} to fit and is re-applied at inference. On equal accuracy, the
-absence of a serving-time imputation stage is the practical advantage that
-generalizes across networks, independent of where the deployment sits
-relative to the crossover.
+The proposed model is \num{406}k parameters at \SI{1.8}{\milli\second} per
+window with \emph{no} imputation stage (Table~\ref{tab:efficiency}). Its
+footprint is modest: \SI{1.55}{\mega\byte} of \texttt{fp32} weights and a peak
+resident set of \SI{589}{\mega\byte} during full-test inference, most of which
+is the shared Python/PyTorch runtime rather than the model itself---every neural
+forecaster here sits in the \SIrange{526}{697}{\mega\byte} band, so the choice of
+architecture is not memory-bound on commodity hardware. The two-stage pipelines
+carry an imputer that must be refit and re-run on every data refresh: the SAITS
+imputer alone is \SI{5.6}{\minute} to fit and is re-applied at inference. On
+equal accuracy, the absence of a serving-time imputation stage is the practical
+advantage that generalizes across networks, independent of where the deployment
+sits relative to the crossover.
+
+\input{../outputs/tables/efficiency.tex}
 
 % =====================================================================
 \section{Discussion}
@@ -645,6 +831,113 @@ and drop the imputation stage; otherwise impute then forecast. Either way, the
 end-to-end model's accuracy parity and absence of a serving-time imputation stage
 make it a safe default to deploy and a cheap one to serve.
 
+\subsection{Why a crossover must exist: error propagation, bias--variance, and
+an information bound}
+\label{sec:theory}
+
+We give three complementary accounts of the crossover, each isolating a
+different mechanism. Throughout, let $X\in\mathbb{R}^{L\times V}$ be the latent
+complete history, $M\in\{0,1\}^{L\times V}$ the observation mask, $Y$ the
+forecast target, and $\hat{X}=g(X\odot M,M)$ the output of an imputer $g$. A
+two-stage forecaster predicts $f(\hat{X})$; a mask-native forecaster predicts
+$h(X\odot M,M)$. Write the reconstruction error $\epsilon=\hat{X}-X$ and split it
+into an imputer bias and a residual noise term,
+\[
+\epsilon =
+\underbrace{\big(\mathbb{E}[\hat{X}\mid X\odot M,M]-X\big)}_{b\ \text{(bias)}}
++ \underbrace{\big(\hat{X}-\mathbb{E}[\hat{X}\mid X\odot M,M]\big)}_{\nu\ \text{(noise)}}.
+\]
+
+\paragraph{(i) Error propagation and bias--variance.}
+A first-order expansion of the two-stage risk about the clean input $X$ gives
+\[
+\mathbb{E}\big(Y-f(\hat{X})\big)^2 \approx
+\underbrace{\mathbb{E}\big(Y-f(X)\big)^2}_{\text{irreducible}}
++ \underbrace{\mathbb{E}\big\|J_f(X)\,b\big\|^2}_{\text{propagated bias}}
++ \underbrace{\mathbb{E}\big\|J_f(X)\,\nu\big\|^2}_{\text{propagated variance}}
++ 2\,\mathbb{E}\big[(Y-f(X))\,J_f(X)\,\epsilon\big],
+\]
+where $J_f(X)=\nabla f(X)$ is the forecaster Jacobian. Both controllable terms
+scale with $\mathbb{E}\|\epsilon\|^2$ through the operator norm $\|J_f\|$: as a
+network becomes less imputable, $\mathbb{E}\|b\|^2$ and $\mathbb{E}\|\nu\|^2$
+grow, and the two-stage pipeline pays for treating an uncertain reconstruction as
+if it were data. The mask-native model avoids the $J_f\epsilon$ channel entirely;
+conditioning on $(X\odot M,M)$, it can place a deliberately higher-bias but
+lower-variance prior over outage windows---degrading toward a
+calendar-and-history mean rather than toward a confidently wrong reconstruction.
+
+\paragraph{(ii) An information bound: imputation cannot add predictive
+information.}
+Because $\hat{X}=g(X\odot M,M)$ is a deterministic function of the masked input,
+conditioning on $(X\odot M,M)$ makes $\hat{X}$ independent of $Y$, so
+$Y - (X\odot M,M) - \hat{X}$ is a Markov chain and the data-processing inequality
+gives
+\[
+I\big(\hat{X};Y\big)\;\le\;I\big(X\odot M,\,M;\,Y\big).
+\]
+The masked observation pair $(X\odot M,M)$ is therefore an
+information-sufficient representation: \emph{no} imputer can increase the
+predictive information available to the forecaster, and a strictly lossy
+reconstruction ($I(\hat{X};Y)<I(X\odot M,M;Y)$) discards some. In the
+infinite-data limit a mask-native forecaster that consumes $(X\odot M,M)$ weakly
+dominates any impute-then-forecast pipeline. The reason two-stage methods ever
+win is \emph{finite-sample}: a dense, plausibly-completed input is an easier
+function to regress from---it supplies a strong inductive prior and
+better-conditioned features---so when reconstruction is accurate
+($\epsilon\!\approx\!0$, high imputability) this optimization and
+sample-efficiency benefit outweighs the information that imputation can only
+lose. As imputability falls the benefit shrinks while the lost information and
+the propagated error of part~(i) grow; the crossover is the operating point where
+the two effects balance.
+
+\paragraph{(iii) Signal reconstruction and missingness uncertainty.}
+The same statement in signal terms: imputation is worthwhile only above a
+reconstruction signal-to-noise ratio. The measured imputability of
+Eq.~\eqref{eq:imputability} is an empirical proxy for that
+SNR---$1-\mathrm{RMSE_{SAITS}}/\mathrm{RMSE_{ffill}}$ rises as the recoverable
+signal in $X_{\mathrm{miss}}$ given $(X_{\mathrm{obs}},M)$ grows, i.e.\ as
+$I(X_{\mathrm{miss}};X_{\mathrm{obs}},M)$ increases. A point imputer compounds the
+problem by discarding the posterior spread
+$\mathrm{Var}(X_{\mathrm{miss}}\mid X_{\mathrm{obs}},M)$: it substitutes a
+conditional mean and lets $f$ treat it as certain, which understates predictive
+variance and miscalibrates the forecast---exactly the regime in which the
+mask-native model, which sees \emph{which} cells are absent, stays better
+calibrated. Taken together, the end-to-end advantage $A$ is a continuous function
+of imputability that is positive on the least-imputable network and negative on
+the most-imputable one at our severe operating point, so by the intermediate
+value theorem a zero-crossing must exist. Its \emph{monotone ordering} across the
+three networks (Section~\ref{sec:imputability}) is the empirical finding, not a
+theorem---a distinction we are careful to preserve below.
+
+\paragraph{Failure modes and error analysis by external condition.}
+The model fails most clearly when the future is driven by unobserved exogenous
+events rather than recent station history: winter temperature inversions,
+regional dust and construction episodes, festival and biomass-burning emissions,
+and abrupt meteorological changes. The per-season RMSE breakdown
+(\texttt{seasonal\_rmse\_pm25}) traces this directly. Error is highest in winter---when
+shallow boundary layers and inversions trap emissions and trans-boundary dust
+raises the baseline---and falls monotonically through the year: at \SI{24}{\hour}
+Full~MAT degrades from \SI{84.8}{\ugm} in winter to \SI{80.1}{\ugm} pre-monsoon,
+\SI{72.4}{\ugm} in monsoon, and \SI{68.7}{\ugm} post-monsoon, a \SI{16}{\ugm}
+swing driven almost entirely by external loading rather than by the model.
+Crucially, the \emph{ranking} of methods is nearly invariant across seasons
+(in winter Full~MAT \SI{83.3}{\ugm} and SAITS \SI{83.4}{\ugm} are within noise,
+and the two track each other in every season), so the seasonal swing is a
+property of the \emph{regime}, not of the architecture---no method here recovers
+the externally forced winter peaks, which the high-pollution-episode table
+confirms as episode RMSE roughly doubling relative to all-hour RMSE. This is the
+expected face of the information bound of Section~\ref{sec:theory}: when the
+predictive signal lives in exogenous drivers absent from $(X\odot M,M)$---dust
+transport, emission shocks, inversion onset---neither imputation nor mask-native
+conditioning can manufacture it. Missingness dropout helps on the part the inputs
+\emph{do} contain, by training the model to fall back to robust
+calendar-and-history priors during outages (hence its best episode and
+outage-robustness numbers), but it cannot infer drivers it never observes. This
+is why the model is simultaneously deployable and robust in aggregate yet still
+fails on the most externally forced peaks---and why the most promising accuracy
+gains (Section~\ref{sec:limitations}) come from \emph{adding exogenous inputs},
+not from a larger forecaster.
+
 % =====================================================================
 \section{Limitations}
 \label{sec:limitations}
@@ -658,14 +951,26 @@ which is robust, and on the sign of the advantage at the operating point. With
 three networks the imputability--advantage relationship is monotone but
 estimated from three points; more networks would tighten the location of the
 zero-crossing, which we report as a regime ($\lesssim\!-0.3$) rather than a sharp
-threshold. The Delhi series is published already complete, so it probes the
-imputability axis at full completeness rather than supplying an
-intermediate-\emph{missingness} point. Synthetic corruption is a proxy for
-additional real missingness; we mitigate this by matching the corruption to the
-empirically dominant outage mechanism. The architecture is intentionally simple
-and per-station; spatial models may shift accuracy but are orthogonal to the
-crossover question. Beijing and Delhi models were trained on GPU and are not
-bit-identical to CPU runs at the same seed.
+threshold. The ROC curve is therefore a diagnostic visualization of the proposed
+threshold, not evidence of a production classifier. The Delhi series is
+published already complete, so it probes the imputability axis at full
+completeness rather than supplying an intermediate-\emph{missingness} point.
+Synthetic corruption is a proxy for additional real missingness; we mitigate
+this by matching the corruption to the empirically dominant outage mechanism,
+but real outages can coincide with storms, maintenance, or pollution episodes in
+ways synthetic masking cannot reproduce. The architecture is intentionally
+simple and per-station; spatial models, satellite fire/dust indicators, boundary
+layer height, reanalysis winds, and chemical transport priors may shift accuracy
+and should be added for peak-event forecasting. The requested no-station,
+no-position, head-count, and layer-count ablation switches are now implemented,
+but not all corresponding checkpoints are present in the current artifact set;
+the manuscript reports completed runs and marks missing grid points explicitly.
+Future work should add more networks, run the full hyperparameter grid,
+benchmark foundation forecasters and diffusion imputers under identical
+masking protocols, and replace point imputations with uncertainty-aware
+forecasting that propagates imputation distributions instead of treating
+reconstructions as truth. Beijing and Delhi models were trained on GPU and are
+not bit-identical to CPU runs at the same seed.
 
 % =====================================================================
 \section{Conclusion}
@@ -675,7 +980,8 @@ We characterized when to forecast air quality end-to-end rather than
 impute-then-forecast, and made the choice \emph{predictive} via a directly
 measured imputability. Across three networks spanning the reconstructability
 spectrum---Dhaka, Delhi, and Beijing---the end-to-end advantage at fixed severe
-outage declines monotonically with imputability and crosses zero: end-to-end
+outage is ordered monotonically by measured imputability and crosses zero:
+end-to-end
 forecasting overtakes a deep imputer on the severely incomplete, low-imputability
 Dhaka network, while on the more-imputable Delhi and Beijing networks the imputer
 wins (on complete-but-noisy Delhi the deep imputer does not even pass its

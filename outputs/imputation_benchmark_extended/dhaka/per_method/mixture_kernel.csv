@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Dhaka,mixture_kernel,kernel,mcar,96.233,49.333,1.5842,0.5879,0.2275,-0.53,4.2,264413
+Dhaka,mixture_kernel,kernel,outage,108.49,60.268,1.6721,0.7193,0.1293,-0.1471,3.6,266833

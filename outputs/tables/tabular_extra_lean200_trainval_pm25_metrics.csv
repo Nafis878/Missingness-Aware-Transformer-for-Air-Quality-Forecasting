@@ -1,0 +1,4 @@
+model,horizon,test_RMSE,n_fit,fit_s
+tabular_extra_lean200_trainval,6,64.99737548828125,8360,3.16
+tabular_extra_lean200_trainval,24,74.02994537353516,8598,3.13
+tabular_extra_lean200_trainval,72,77.95948028564453,8599,3.17

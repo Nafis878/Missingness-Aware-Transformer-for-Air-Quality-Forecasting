@@ -1,0 +1,28 @@
+dataset,model,model_family,before_after_pair_available
+Dhaka,LSTM,LSTM,True
+Dhaka,SARIMA,ARIMA/SARIMA,True
+Dhaka,DLinear,DLinear,True
+Dhaka,PatchTST,PatchTST,False
+Dhaka,GRU,GRU,True
+Dhaka,GRU-D,GRU-D,True
+Dhaka,MAT,Transformer/MAT,True
+Dhaka,MAT variant B,Transformer/MAT-B,True
+Dhaka,MAT + miss-dropout,Transformer/MAT-MD,True
+Delhi,LSTM,LSTM,False
+Delhi,SARIMA,ARIMA/SARIMA,False
+Delhi,DLinear,DLinear,False
+Delhi,PatchTST,PatchTST,False
+Delhi,GRU,GRU,False
+Delhi,GRU-D,GRU-D,False
+Delhi,MAT,Transformer/MAT,True
+Delhi,MAT variant B,Transformer/MAT-B,True
+Delhi,MAT + miss-dropout,Transformer/MAT-MD,True
+Beijing,LSTM,LSTM,False
+Beijing,SARIMA,ARIMA/SARIMA,False
+Beijing,DLinear,DLinear,False
+Beijing,PatchTST,PatchTST,False
+Beijing,GRU,GRU,False
+Beijing,GRU-D,GRU-D,False
+Beijing,MAT,Transformer/MAT,True
+Beijing,MAT variant B,Transformer/MAT-B,True
+Beijing,MAT + miss-dropout,Transformer/MAT-MD,True

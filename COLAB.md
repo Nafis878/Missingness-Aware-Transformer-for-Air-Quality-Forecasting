@@ -100,6 +100,46 @@ the *complete-network* anchor of the imputability study.)
    `crossover_combined`, and the headline `imputability_crossover` figure +
    `decision_by_imputability` table across all three networks.
 
+## Dhaka ablation grid (reviewer-requested architecture/hyperparameter ablations)
+
+The requested ablation switches (`no_station_embed`, `no_pos_enc`, attention
+heads 4/16, layers 2/4, window 336) have code support in `05_ablations.py` but
+were never trained locally — the manuscript marks them `not_run`. This runner
+fills the grid on GPU. Unlike Beijing/Delhi, the Dhaka data is **not**
+downloaded on Colab, so the repo zip must include `data/processed/` (the
+`all_stations.parquet`, per-station parquets, and `scalers.json`); the runner
+fails fast with a clear message if it is missing.
+
+1. **In Colab** (GPU runtime), after unzipping the repo (with `data/processed/`):
+
+   ```python
+   %cd air-transformer
+   !pip install -q pyarrow pyyaml scikit-learn statsmodels seaborn openpyxl
+   !python scripts/colab_run_ablations.py
+   ```
+
+   The runner trains `no_station_embed`, `no_pos_enc`, `heads4`, `heads16`,
+   `layers2`, `layers4` × seeds 42/43/44 and `seq336` × seeds 43/44 (seed 42 is
+   already cached and skipped), then zips `outputs/ablation_results.json` and the
+   new `outputs/checkpoints/abl_*` files into **`ablation_artifacts.zip`**.
+   Everything resumes per `(variant, seed)`, so a disconnect just means re-running
+   the cell.
+
+2. **Download `ablation_artifacts.zip`**, unzip into the local repo root (it
+   overlays `outputs/ablation_results.json` and the new checkpoints), then
+   regenerate the ablation tables locally:
+
+   ```powershell
+   python scripts/30_reviewer_requested_assets.py --config config.yaml
+   ```
+
+   This rewrites `requested_architecture_ablations.tex` (now with real
+   `no_station_embed` / `no_pos_enc` rows) and
+   `requested_hyperparameter_ablations.tex` (real heads 4/8/16, layers 2/3/4,
+   window 72/168/336). These grid points are **GPU-trained**; the reference
+   `full`/`variant_B` rows are CPU-trained — disclosed in the table captions,
+   matching the Beijing/Delhi convention.
+
 ## Notes
 
 - Checkpoints are saved with CPU-moved state dicts, so GPU-trained models

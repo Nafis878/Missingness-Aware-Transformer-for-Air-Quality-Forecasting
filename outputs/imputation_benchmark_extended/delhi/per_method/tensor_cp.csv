@@ -1,0 +1,3 @@
+dataset,method,family,pattern,pm25_rmse_ugm3,pm25_mae_ugm3,overall_std_rmse,overall_std_mae,overall_r2,imputability,runtime_s,n_cells
+Delhi,tensor_cp,tensor,mcar,6.468,4.178,0.2571,0.114,0.8183,0.2847,0.0,45465
+Delhi,tensor_cp,tensor,outage,19.454,13.547,0.6125,0.354,-0.0241,0.13,0.0,46724

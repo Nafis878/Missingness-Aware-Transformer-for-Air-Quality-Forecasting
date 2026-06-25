@@ -1,0 +1,43 @@
+dataset,model,before_model,after_model,horizon,before_RMSE,after_RMSE,delta_after_minus_before,improvement_pct,source,model_family,row_label,available_pair
+Beijing,MAT,Proposed (MAT),Hybrid8 + mask + MAT,6,49.43,49.4764264424642,0.0464264424642024,-0.093923614129481,hybrid8_zip_summary,Transformer/MAT,Beijing | Transformer/MAT,True
+Beijing,MAT,Proposed (MAT),Hybrid8 + mask + MAT,24,76.79,76.53708394368489,-0.2529160563151151,0.3293606671638431,hybrid8_zip_summary,Transformer/MAT,Beijing | Transformer/MAT,True
+Beijing,MAT,Proposed (MAT),Hybrid8 + mask + MAT,72,86.37,87.05103556315105,0.6810355631510419,-0.7885093934827392,hybrid8_zip_summary,Transformer/MAT,Beijing | Transformer/MAT,True
+Beijing,MAT variant B,Proposed (variant B),Hybrid8 + mask + MAT variant B,6,49.38,49.39837265014648,0.0183726501464747,-0.0372066629130715,hybrid8_zip_summary,Transformer/MAT-B,Beijing | Transformer/MAT-B,True
+Beijing,MAT variant B,Proposed (variant B),Hybrid8 + mask + MAT variant B,24,76.74,76.31120045979817,-0.4287995402018225,0.5587692731324245,hybrid8_zip_summary,Transformer/MAT-B,Beijing | Transformer/MAT-B,True
+Beijing,MAT variant B,Proposed (variant B),Hybrid8 + mask + MAT variant B,72,86.46,86.98189290364583,0.5218929036458348,-0.6036235295464202,hybrid8_zip_summary,Transformer/MAT-B,Beijing | Transformer/MAT-B,True
+Beijing,MAT + miss-dropout,Proposed + miss-dropout,Hybrid8 + mask + MAT + miss-dropout,6,51.44,50.95715586344401,-0.4828441365559897,0.9386550088569008,hybrid8_zip_summary,Transformer/MAT-MD,Beijing | Transformer/MAT-MD,True
+Beijing,MAT + miss-dropout,Proposed + miss-dropout,Hybrid8 + mask + MAT + miss-dropout,24,76.37,76.75305938720703,0.3830593872070267,-0.5015835893767535,hybrid8_zip_summary,Transformer/MAT-MD,Beijing | Transformer/MAT-MD,True
+Beijing,MAT + miss-dropout,Proposed + miss-dropout,Hybrid8 + mask + MAT + miss-dropout,72,85.58,85.92282104492188,0.3428210449218767,-0.4005854696446327,hybrid8_zip_summary,Transformer/MAT-MD,Beijing | Transformer/MAT-MD,True
+Delhi,MAT,Proposed (MAT),Hybrid8 + mask + MAT,6,31.44,32.45236905415853,1.0123690541585295,-3.220003352921532,hybrid8_zip_summary,Transformer/MAT,Delhi | Transformer/MAT,True
+Delhi,MAT,Proposed (MAT),Hybrid8 + mask + MAT,24,33.06,33.31841532389323,0.2584153238932245,-0.7816555471664384,hybrid8_zip_summary,Transformer/MAT,Delhi | Transformer/MAT,True
+Delhi,MAT,Proposed (MAT),Hybrid8 + mask + MAT,72,43.6,40.57276407877604,-3.027235921223962,6.943201654183399,hybrid8_zip_summary,Transformer/MAT,Delhi | Transformer/MAT,True
+Delhi,MAT variant B,Proposed (variant B),Hybrid8 + mask + MAT variant B,6,31.44,32.45236905415853,1.0123690541585295,-3.220003352921532,hybrid8_zip_summary,Transformer/MAT-B,Delhi | Transformer/MAT-B,True
+Delhi,MAT variant B,Proposed (variant B),Hybrid8 + mask + MAT variant B,24,33.06,33.31841405232748,0.2584140523274811,-0.78165170093007,hybrid8_zip_summary,Transformer/MAT-B,Delhi | Transformer/MAT-B,True
+Delhi,MAT variant B,Proposed (variant B),Hybrid8 + mask + MAT variant B,72,43.6,40.57276407877604,-3.027235921223962,6.943201654183399,hybrid8_zip_summary,Transformer/MAT-B,Delhi | Transformer/MAT-B,True
+Delhi,MAT + miss-dropout,Proposed + miss-dropout,Hybrid8 + mask + MAT + miss-dropout,6,26.42,26.860191980997723,0.4401919809977208,-1.6661316464713127,hybrid8_zip_summary,Transformer/MAT-MD,Delhi | Transformer/MAT-MD,True
+Delhi,MAT + miss-dropout,Proposed + miss-dropout,Hybrid8 + mask + MAT + miss-dropout,24,30.83,31.80502192179362,0.9750219217936228,-3.1625751598884944,hybrid8_zip_summary,Transformer/MAT-MD,Delhi | Transformer/MAT-MD,True
+Delhi,MAT + miss-dropout,Proposed + miss-dropout,Hybrid8 + mask + MAT + miss-dropout,72,34.37,34.36756388346354,-0.0024361165364581,0.0070879154392148,hybrid8_zip_summary,Transformer/MAT-MD,Delhi | Transformer/MAT-MD,True
+Dhaka,SARIMA,sarima,hybrid8_sarima,6,79.95516967773438,77.2080307006836,-2.747138977050781,3.435849099093081,local_prediction_bundles,ARIMA/SARIMA,Dhaka | ARIMA/SARIMA,True
+Dhaka,SARIMA,sarima,hybrid8_sarima,24,83.86502075195312,81.59490966796875,-2.270111083984375,2.706862841778414,local_prediction_bundles,ARIMA/SARIMA,Dhaka | ARIMA/SARIMA,True
+Dhaka,SARIMA,sarima,hybrid8_sarima,72,86.73535919189453,84.3816146850586,-2.353744506835937,2.713708144827624,local_prediction_bundles,ARIMA/SARIMA,Dhaka | ARIMA/SARIMA,True
+Dhaka,LSTM,lstm,hybrid8_lstm,6,67.98466491699219,69.63427734375,1.6496124267578125,-2.4264478302157606,local_prediction_bundles,LSTM,Dhaka | LSTM,True
+Dhaka,LSTM,lstm,hybrid8_lstm,24,77.9365234375,78.48916625976562,0.552642822265625,-0.7090935005701254,local_prediction_bundles,LSTM,Dhaka | LSTM,True
+Dhaka,LSTM,lstm,hybrid8_lstm,72,79.91160583496094,81.79925537109375,1.8876495361328125,-2.3621719478786587,local_prediction_bundles,LSTM,Dhaka | LSTM,True
+Dhaka,GRU,gru,hybrid8_gru,6,67.34760284423828,68.17936706542969,0.8317642211914062,-1.2350316656631606,local_prediction_bundles,GRU,Dhaka | GRU,True
+Dhaka,GRU,gru,hybrid8_gru,24,76.34696960449219,77.62569427490234,1.2787246704101562,-1.674885954261788,local_prediction_bundles,GRU,Dhaka | GRU,True
+Dhaka,GRU,gru,hybrid8_gru,72,79.24479675292969,80.95646667480469,1.711669921875,-2.1599776793063947,local_prediction_bundles,GRU,Dhaka | GRU,True
+Dhaka,GRU-D,gru_d,hybrid8_gru_d,6,69.31134033203125,67.72918701171875,-1.5821533203125,2.282675984526201,local_prediction_bundles,GRU-D,Dhaka | GRU-D,True
+Dhaka,GRU-D,gru_d,hybrid8_gru_d,24,76.40607452392578,77.21240997314453,0.80633544921875,-1.0553289829936945,local_prediction_bundles,GRU-D,Dhaka | GRU-D,True
+Dhaka,GRU-D,gru_d,hybrid8_gru_d,72,80.28545379638672,81.62293243408203,1.3374786376953125,-1.6659040641251333,local_prediction_bundles,GRU-D,Dhaka | GRU-D,True
+Dhaka,DLinear,dlinear,hybrid8_dlinear,6,69.72543334960938,75.01731872558594,5.2918853759765625,-7.589605573969817,local_prediction_bundles,DLinear,Dhaka | DLinear,True
+Dhaka,DLinear,dlinear,hybrid8_dlinear,24,80.3437271118164,90.54776763916016,10.20404052734375,-12.700481909611346,local_prediction_bundles,DLinear,Dhaka | DLinear,True
+Dhaka,DLinear,dlinear,hybrid8_dlinear,72,83.05587768554688,88.57967376708984,5.523796081542969,-6.650698584459367,local_prediction_bundles,DLinear,Dhaka | DLinear,True
+Dhaka,MAT,proposed,hybrid8_masked_proposed,6,66.78169250488281,68.5703353881836,1.7886428833007812,-2.678343144971959,local_prediction_bundles,Transformer/MAT,Dhaka | Transformer/MAT,True
+Dhaka,MAT,proposed,hybrid8_masked_proposed,24,77.1109848022461,79.3816909790039,2.2707061767578125,-2.9447246492586245,local_prediction_bundles,Transformer/MAT,Dhaka | Transformer/MAT,True
+Dhaka,MAT,proposed,hybrid8_masked_proposed,72,80.73583221435547,81.60518646240234,0.869354248046875,-1.0767886131881563,local_prediction_bundles,Transformer/MAT,Dhaka | Transformer/MAT,True
+Dhaka,MAT variant B,variant_B,hybrid8_masked_variant_B,6,66.893310546875,68.21814727783203,1.3248367309570312,-1.9805219985766165,local_prediction_bundles,Transformer/MAT-B,Dhaka | Transformer/MAT-B,True
+Dhaka,MAT variant B,variant_B,hybrid8_masked_variant_B,24,76.64645385742188,77.56836700439453,0.9219131469726562,-1.2028125250094464,local_prediction_bundles,Transformer/MAT-B,Dhaka | Transformer/MAT-B,True
+Dhaka,MAT variant B,variant_B,hybrid8_masked_variant_B,72,79.80533599853516,79.93024444580078,0.124908447265625,-0.1565164104664852,local_prediction_bundles,Transformer/MAT-B,Dhaka | Transformer/MAT-B,True
+Dhaka,MAT + miss-dropout,proposed_md,hybrid8_masked_proposed_md,6,66.24041748046875,68.65132904052734,2.4109115600585938,-3.639638232608453,local_prediction_bundles,Transformer/MAT-MD,Dhaka | Transformer/MAT-MD,True
+Dhaka,MAT + miss-dropout,proposed_md,hybrid8_masked_proposed_md,24,77.30408477783203,79.59484100341797,2.290756225585937,-2.9633055383418005,local_prediction_bundles,Transformer/MAT-MD,Dhaka | Transformer/MAT-MD,True
+Dhaka,MAT + miss-dropout,proposed_md,hybrid8_masked_proposed_md,72,80.46794891357422,81.13565063476562,0.6677017211914062,-0.8297735063541194,local_prediction_bundles,Transformer/MAT-MD,Dhaka | Transformer/MAT-MD,True

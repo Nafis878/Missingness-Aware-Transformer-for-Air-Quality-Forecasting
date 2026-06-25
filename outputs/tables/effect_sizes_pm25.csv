@@ -1,0 +1,10 @@
+comparison,horizon_h,candidate_rmse,baseline_rmse,relative_rmse_improvement_pct,paired_cohens_d,cliffs_delta,n_seeds
+Full MAT vs SAITS,6,67.04,67.22,0.28,0.199,0.333,3
+Full MAT vs SAITS,24,76.0,76.31,0.4,0.845,0.111,3
+Full MAT vs SAITS,72,80.26,81.43,1.44,3.123,0.556,3
+Full MAT vs KNN,6,67.04,66.95,-0.13,-0.207,0.111,3
+Full MAT vs KNN,24,76.0,76.42,0.55,0.273,0.333,3
+Full MAT vs KNN,72,80.26,80.95,0.85,2.283,0.333,3
+MAT+dropout vs SAITS,6,67.48,67.22,-0.37,-1.628,-0.556,3
+MAT+dropout vs SAITS,24,79.69,76.31,-4.43,-1.465,-1.0,3
+MAT+dropout vs SAITS,72,81.54,81.43,-0.13,-0.139,0.111,3

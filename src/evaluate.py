@@ -599,10 +599,17 @@ def efficiency_table(cfg: dict) -> pd.DataFrame:
     for path in sorted(ckpt_dir.glob("*_stats.json")):
         s = json.loads(path.read_text(encoding="utf-8"))
         name = s["name"]
-        if name not in MODEL_LABELS:
+        # The hybrid8_* models belong to the separate ensemble study (scripts
+        # 08-29), not the manuscript's core deployability table; exclude them.
+        if name not in MODEL_LABELS or name.startswith("hybrid8"):
             continue
         rows[MODEL_LABELS[name]] = {
             "Parameters": s.get("n_parameters", 0),
+            "Param memory (MB)": round(s.get("n_parameters", 0) * 4 / (1024 ** 2), 2),
+            "Peak memory (MB)": (
+                round(float(s["peak_memory_mb"]), 1)
+                if s.get("peak_memory_mb") is not None else np.nan
+            ),
             "Train time (min)": round(s.get("train_time_s", 0.0) / 60, 1),
             "Impute time (min)": round(s.get("impute_time_s", 0.0) / 60, 1),
             "Latency (ms/window)": round(float(s.get("latency_ms_per_window", np.nan)), 2),
@@ -1323,7 +1330,8 @@ def run_evaluation(cfg: dict[str, Any]) -> None:
         episode_figure(ep_tbl, cfg, figures_dir)
 
     export_table(efficiency_table(cfg), tables_dir, "efficiency",
-                 "CPU efficiency: parameters, wall-clock training time, and "
+                 "CPU efficiency: parameters, parameter memory, peak resident "
+                 "memory during inference, wall-clock training time, and "
                  "single-window inference latency on a desktop CPU.",
                  "tab:efficiency", "%.2f")
 
