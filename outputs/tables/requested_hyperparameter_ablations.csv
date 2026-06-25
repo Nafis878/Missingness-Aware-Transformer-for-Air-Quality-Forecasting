@@ -1,10 +1,10 @@
 variant,run_key,status,seeds,h6,h24,h72,train_time_min_mean,factor,setting
 Window 72,seq72,complete,3,68.10 $\pm$ 0.63,77.21 $\pm$ 1.35,80.59 $\pm$ 0.87,6.0,Window,72
 No attention mask,full,complete,3,67.03 $\pm$ 0.34,76.46 $\pm$ 0.62,81.54 $\pm$ 1.59,29.9,Window/Layers,168 or 3
-Window 336,seq336,complete,1,68.62,77.99,80.98,99.4,Window,336
-Heads 4,heads4,not_run,0,NA,NA,NA,NA,Attention heads,4
+Window 336,seq336,complete,3,69.11 $\pm$ 0.58,79.02 $\pm$ 2.43,83.06 $\pm$ 2.65,35.5,Window,336
+Heads 4,heads4,complete,3,67.10 $\pm$ 0.18,76.81 $\pm$ 0.48,81.50 $\pm$ 0.85,1.1,Attention heads,4
 Full MAT (+attention mask),variant_B,complete,3,67.04 $\pm$ 0.35,76.00 $\pm$ 0.62,80.26 $\pm$ 1.67,26.4,Attention heads,8
-Heads 16,heads16,not_run,0,NA,NA,NA,NA,Attention heads,16
-Layers 2,layers2,not_run,0,NA,NA,NA,NA,Layers,2
+Heads 16,heads16,complete,3,66.50 $\pm$ 0.19,76.23 $\pm$ 0.50,81.14 $\pm$ 0.66,1.7,Attention heads,16
+Layers 2,layers2,complete,3,67.40 $\pm$ 1.00,77.28 $\pm$ 0.59,81.76 $\pm$ 1.76,0.9,Layers,2
 No attention mask,full,complete,3,67.03 $\pm$ 0.34,76.46 $\pm$ 0.62,81.54 $\pm$ 1.59,29.9,Window/Layers,168 or 3
-Layers 4,layers4,not_run,0,NA,NA,NA,NA,Layers,4
+Layers 4,layers4,complete,3,67.15 $\pm$ 0.37,76.97 $\pm$ 0.73,81.21 $\pm$ 0.73,1.7,Layers,4

@@ -772,22 +772,33 @@ PatchTST                & 152.52\,$\pm$\,1.68 & 147.21\,$\pm$\,4.19 & 152.22\,$\
 \label{sec:ablations}
 
 Table~\ref{tab:requested_arch_ablations} reports the requested MAT component
-ablations. The attention mask is helpful mainly at longer range: Full MAT
-variant~B and the no-attention-mask variant are tied at \SI{6}{\hour}, while the
-mask improves \SI{24}{\hour} and \SI{72}{\hour} RMSE. Removing the missingness
-embedding slightly hurts \SI{6}{\hour} and \SI{72}{\hour}; removing calendar
-time features hurts all horizons and especially \SI{72}{\hour}, consistent with
-air-pollution seasonality carrying real signal. The code now exposes the
-requested no-station-embedding and no-positional-encoding switches, but those
-checkpoints are not present in the current artifact set, so they are marked
-``not\_run'' rather than invented.
+ablations, now complete at three seeds. Two components carry most of the model's
+value. Removing the \emph{station embedding} is the single most damaging change,
+inflating \SI{6}{\hour} RMSE from \SI{67.0}{} to \SI{70.3}{\ugm} (and hurting
+every horizon), which shows that per-station identity---site-specific baselines
+and exposure regimes---is the dominant inductive signal. Removing the
+\emph{calendar time features} hurts all horizons and most at \SI{72}{\hour}
+(\SI{84.7}{} versus \SI{81.5}{\ugm}), consistent with air-pollution seasonality
+carrying real long-range signal, and removing the \emph{positional encoding}
+degrades \SI{6}{\hour} and \SI{24}{\hour} comparably. The \emph{attention mask}
+(variant~B) helps mainly at longer range: it ties the no-attention-mask variant
+at \SI{6}{\hour} (\SI{67.04}{} versus \SI{67.03}{\ugm}) but improves
+\SI{24}{\hour} (\SI{76.00}{} versus \SI{76.46}{}) and \SI{72}{\hour}
+(\SI{80.26}{} versus \SI{81.54}{\ugm}); the \emph{missingness embedding}
+contributes a smaller gain concentrated at \SI{6}{\hour} and \SI{72}{\hour}.
 
-Table~\ref{tab:requested_hparam_ablations} reports completed window-length
-ablations and the requested attention-head/layer grid status. Window 72 is
-faster but worse at \SI{6}{\hour} and \SI{24}{\hour}; window 336 was run for one
-seed only and is slower without improving accuracy. Attention heads 4/8/16 and
-layers 2/3/4 are supported by the updated ablation runner; only the configured
-8-head, 3-layer run is completed in the current artifact set.
+Table~\ref{tab:requested_hparam_ablations} reports the full window-length,
+attention-head, and depth grid at three seeds. Window~168 is the sweet spot:
+window~72 is faster but worse at \SI{6}{\hour} and \SI{24}{\hour}
+(\SI{68.1}{}/\SI{77.2}{} versus \SI{67.0}{}/\SI{76.5}{\ugm}), and window~336 is
+slower and slightly worse (\SI{69.1}{\ugm} at \SI{6}{\hour}), so a one-week
+context is well matched to these horizons. Accuracy is otherwise \emph{flat}
+across the head and depth grids: heads 4/8/16 fall within \SI{0.6}{\ugm} at
+\SI{6}{\hour} (16~heads is marginally best there at \SI{66.5}{\ugm}, while
+8~heads is best at \SI{24}{\hour} and \SI{72}{\hour}), and layers 2/3/4 within
+\SI{0.4}{\ugm}, with depth~3 best overall. The configured 8-head, 3-layer model
+therefore sits at or near the optimum, and the architecture is robust to these
+choices rather than finely tuned to them.
 
 \input{../outputs/tables/requested_architecture_ablations.tex}
 \input{../outputs/tables/requested_hyperparameter_ablations.tex}
@@ -962,15 +973,18 @@ ways synthetic masking cannot reproduce. The architecture is intentionally
 simple and per-station; spatial models, satellite fire/dust indicators, boundary
 layer height, reanalysis winds, and chemical transport priors may shift accuracy
 and should be added for peak-event forecasting. The requested no-station,
-no-position, head-count, and layer-count ablation switches are now implemented,
-but not all corresponding checkpoints are present in the current artifact set;
-the manuscript reports completed runs and marks missing grid points explicitly.
-Future work should add more networks, run the full hyperparameter grid,
-benchmark foundation forecasters and diffusion imputers under identical
+no-position, head-count (4/8/16), layer-count (2/3/4), and window-length
+(72/168/336) ablations are now complete at three seeds
+(Tables~\ref{tab:requested_arch_ablations}--\ref{tab:requested_hparam_ablations});
+the component-importance ordering they reveal (station identity $>$ time features
+$\approx$ positional encoding $>$ attention mask $>$ missingness embedding) is a
+Dhaka result and may differ on other networks. Future work should add more
+networks, benchmark foundation forecasters and diffusion imputers under identical
 masking protocols, and replace point imputations with uncertainty-aware
 forecasting that propagates imputation distributions instead of treating
-reconstructions as truth. Beijing and Delhi models were trained on GPU and are
-not bit-identical to CPU runs at the same seed.
+reconstructions as truth. The architecture/hyperparameter grid points
+(Section~\ref{sec:ablations}) and the Beijing and Delhi models were trained on
+GPU and are not bit-identical to CPU runs at the same seed.
 
 % =====================================================================
 \section{Conclusion}

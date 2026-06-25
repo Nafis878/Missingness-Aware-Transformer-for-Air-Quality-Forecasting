@@ -1,5 +1,5 @@
 \begin{table}
-\caption{Requested MAT architecture ablations on Dhaka PM2.5. Entries marked not\_run have code support but no completed checkpoint in the current artifact set.}
+\caption{Requested MAT architecture ablations on Dhaka PM2.5, three-seed mean $\pm$ std. The no\_station\_embed and no\_pos\_enc component ablations are GPU-trained; the reference Full MAT and No-attention-mask rows are CPU-trained (GPU and CPU runs at the same seed are not bit-identical).}
 \label{tab:requested_arch_ablations}
 \begin{tabular}{llrlll}
 \toprule
@@ -8,9 +8,9 @@ Variant & Status & Seeds & 6 h & 24 h & 72 h \\
 Full MAT (+attention mask) & complete & 3 & 67.04 $\pm$ 0.35 & 76.00 $\pm$ 0.62 & 80.26 $\pm$ 1.67 \\
 No attention mask & complete & 3 & 67.03 $\pm$ 0.34 & 76.46 $\pm$ 0.62 & 81.54 $\pm$ 1.59 \\
 No mask embedding & complete & 3 & 67.52 $\pm$ 0.22 & 76.35 $\pm$ 0.36 & 81.93 $\pm$ 2.31 \\
-No station embedding & not\_run & 0 & NA & NA & NA \\
+No station embedding & complete & 3 & 70.30 $\pm$ 1.64 & 77.24 $\pm$ 0.85 & 82.37 $\pm$ 2.42 \\
 No time features & complete & 3 & 67.88 $\pm$ 0.69 & 78.13 $\pm$ 1.18 & 84.69 $\pm$ 1.30 \\
-No positional encoding & not\_run & 0 & NA & NA & NA \\
+No positional encoding & complete & 3 & 68.34 $\pm$ 0.37 & 78.40 $\pm$ 0.89 & 82.41 $\pm$ 1.78 \\
 \bottomrule
 \end{tabular}
 \end{table}

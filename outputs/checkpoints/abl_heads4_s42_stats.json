@@ -1,0 +1,68 @@
+{
+  "name": "abl_heads4_s42",
+  "seed": 42,
+  "checkpoint": "/content/Missingness-Aware-Transformer-for-Air-Quality-Forecasting/outputs/checkpoints/abl_heads4_s42_seed42.pt",
+  "best_val_loss": 0.6657792744801382,
+  "best_epoch": 3,
+  "epochs_run": 11,
+  "train_time_s": 62.6,
+  "n_parameters": 406418,
+  "peak_memory_mb": 1741.7890625,
+  "history": [
+    {
+      "epoch": 0,
+      "train": 0.5685572632876769,
+      "val": 0.7505517007315681
+    },
+    {
+      "epoch": 1,
+      "train": 0.42522983953978855,
+      "val": 0.7547088350366836
+    },
+    {
+      "epoch": 2,
+      "train": 0.4001369499458623,
+      "val": 0.7293466394182563
+    },
+    {
+      "epoch": 3,
+      "train": 0.38286800025508966,
+      "val": 0.6657792744801382
+    },
+    {
+      "epoch": 4,
+      "train": 0.37384515777995614,
+      "val": 0.692058883161392
+    },
+    {
+      "epoch": 5,
+      "train": 0.3596273026671624,
+      "val": 0.71229036307111
+    },
+    {
+      "epoch": 6,
+      "train": 0.349503478230776,
+      "val": 0.7077462578124738
+    },
+    {
+      "epoch": 7,
+      "train": 0.33642685105788045,
+      "val": 0.7048952297485898
+    },
+    {
+      "epoch": 8,
+      "train": 0.3248507887280894,
+      "val": 0.7078815191498082
+    },
+    {
+      "epoch": 9,
+      "train": 0.31650457376346164,
+      "val": 0.738474705844039
+    },
+    {
+      "epoch": 10,
+      "train": 0.3026956488899434,
+      "val": 0.7277977743202781
+    }
+  ]
+}

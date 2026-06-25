@@ -216,7 +216,7 @@ def ablation_review_tables(outputs: Path, tables: Path) -> None:
     write_latex_table(
         arch_tex,
         tables / "requested_architecture_ablations.tex",
-        "Requested MAT architecture ablations on Dhaka PM2.5. Entries marked not\\_run have code support but no completed checkpoint in the current artifact set.",
+        "Requested MAT architecture ablations on Dhaka PM2.5, three-seed mean $\\pm$ std. The no\\_station\\_embed and no\\_pos\\_enc component ablations are GPU-trained; the reference Full MAT and No-attention-mask rows are CPU-trained (GPU and CPU runs at the same seed are not bit-identical).",
         "tab:requested_arch_ablations",
     )
 
@@ -247,7 +247,7 @@ def ablation_review_tables(outputs: Path, tables: Path) -> None:
     write_latex_table(
         hp_tex,
         tables / "requested_hyperparameter_ablations.tex",
-        "Requested hyperparameter ablations on Dhaka PM2.5. Window 168, heads 8, and layers 3 correspond to the configured MAT run.",
+        "Requested hyperparameter ablations on Dhaka PM2.5, three-seed mean $\\pm$ std. Window 168, heads 8, and layers 3 correspond to the configured MAT run; the head-count (4/16), layer-count (2/4), and window-336 grid points are GPU-trained, the reference rows CPU-trained.",
         "tab:requested_hparam_ablations",
     )
 
